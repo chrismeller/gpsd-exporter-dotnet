@@ -161,14 +161,14 @@ public sealed class EndToEndTests
         await MetricsHost.WaitUntil(() => host.Stats.Up, "the new VERSION");
         var empty = await host.ScrapeAsync();
         empty.Value("gpsd_up").ShouldBe(1);
-        empty.Has("gpsd_tpv_latitude_degrees").ShouldBeFalse();
-        empty.Has("gpsd_satellite_used").ShouldBeFalse();
+        empty.All("gpsd_tpv_latitude_degrees").ShouldBeEmpty();
+        empty.All("gpsd_satellite_used").ShouldBeEmpty();
 
         await host.SendAndWaitAsync(second, [$$"""{"class":"TPV","device":"{{Device}}","mode":3,"time":"2026-11-23T10:00:00.000Z","lat":40.7,"lon":-74.0}"""]);
         var fresh = await host.ScrapeAsync();
 
         fresh.Value("gpsd_tpv_latitude_degrees", ("device", Device)).ShouldBe(40.7);
-        fresh.Has("gpsd_satellite_used").ShouldBeFalse();
+        fresh.All("gpsd_satellite_used").ShouldBeEmpty();
     }
 
     [Fact]
