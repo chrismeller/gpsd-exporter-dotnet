@@ -13,7 +13,7 @@ public sealed class GpsdExpositionTests
     private const string Usb0 = "/dev/ttyUSB0";
 
     /// <summary>Every gpsd-derived metric prefix; <c>gpsd_up</c>, <c>gpsd_version_info</c> and <c>gpsd_exporter_*</c> are not.</summary>
-    private static readonly string[] DerivedPrefixes = ["gpsd_device_", "gpsd_tpv_", "gpsd_sky_", "gpsd_satellite_", "gpsd_pps_", "gpsd_toff_", "gpsd_osc_"];
+    internal static readonly string[] DerivedPrefixes = ["gpsd_device_", "gpsd_tpv_", "gpsd_sky_", "gpsd_satellite_", "gpsd_pps_", "gpsd_toff_", "gpsd_osc_"];
 
     private static readonly (string, string) Device = ("device", Acm0);
 
@@ -59,14 +59,20 @@ public sealed class GpsdExpositionTests
     }
 
     [Fact]
-    public async Task T3_3_VERSION_only_produces_no_gpsd_derived_series()
+    public async Task T3_3_VERSION_only_produces_only_up_version_and_exporter_metrics()
     {
-        await using var host = new MetricsHost();
-        host.Apply("""{"class":"VERSION","release":"3.25","rev":"3.25","proto_major":3,"proto_minor":15}""");
+        await using var gpsd = FakeGpsd.CreateStarted();
+        var (host, _) = await MetricsHost.ConnectAsync(gpsd);
+        await using var _host = host;
 
         var scrape = await host.ScrapeAsync();
 
+        scrape.Value("gpsd_up").ShouldBe(1);
+        scrape.Family("gpsd_version_info")!.Samples.ShouldHaveSingleItem();
         DerivedNames(scrape).ShouldBeEmpty();
+        scrape.Families.Select(f => f.Name)
+            .Where(n => n is not ("gpsd_up" or "gpsd_version_info") && !n.StartsWith("gpsd_exporter_", StringComparison.Ordinal))
+            .ShouldBeEmpty();
     }
 
     [Fact]
@@ -117,7 +123,10 @@ public sealed class GpsdExpositionTests
         // What the connection manager does when the connection is lost.
         host.Store.Reset();
 
-        DerivedNames(await host.ScrapeAsync()).ShouldBeEmpty();
+        var scrape = await host.ScrapeAsync();
+        DerivedNames(scrape).ShouldBeEmpty();
+        scrape.All("gpsd_version_info").ShouldBeEmpty();
+        scrape.Value("gpsd_up").ShouldBe(0);
     }
 
     [Fact]
@@ -260,9 +269,11 @@ public sealed class GpsdExpositionTests
         await using var host = new MetricsHost();
         host.Replay("session-3d-fix.jsonl");
 
-        var scrapes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => host.ScrapeTextAsync()));
+        var scrapes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => host.ScrapeAsync()));
 
-        scrapes.Distinct(StringComparer.Ordinal).ShouldHaveSingleItem();
+        // The scrape duration histogram differs between scrapes; the gpsd series must not.
+        scrapes.Select(s => string.Join('\n', s.Samples.Where(x => !x.Name.StartsWith("gpsd_exporter_scrape_", StringComparison.Ordinal))))
+            .Distinct(StringComparer.Ordinal).ShouldHaveSingleItem();
     }
 
     internal static IReadOnlyList<string> DerivedNames(PrometheusText scrape) =>

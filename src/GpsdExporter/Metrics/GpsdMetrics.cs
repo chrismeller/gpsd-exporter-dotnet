@@ -8,7 +8,8 @@ using C = GpsdExporter.Metrics.MetricCatalogue;
 namespace GpsdExporter.Metrics;
 
 /// <summary>
-/// The gpsd-derived instruments: TPV, SKY, satellites, PPS, TOFF and OSC. Each one is an
+/// The gpsd-derived instruments: the daemon and devices, TPV, SKY, satellites, PPS, TOFF and
+/// OSC. Each one is an
 /// observable instrument whose callback reads the scrape's <see cref="StateSnapshot"/> and
 /// reports only the values that are present and fresh (R3, R4). A value that is absent is
 /// simply not reported, so its series disappears from the next scrape.
@@ -97,6 +98,13 @@ internal sealed class GpsdMetrics : IDisposable
 
         _meter = meterFactory.Create(MeterName);
         _scrape = scrape;
+
+        // Daemon and devices.
+        Gauge(C.VersionInfo, VersionInfo);
+        Gauge(C.DeviceInfo, DeviceInfo);
+        Gauge(C.DeviceCycle, s => PerDevice(s, d => d.Info?.Cycle));
+        Gauge(C.DeviceBitsPerSecond, s => PerDevice(s, d => d.Info?.Bps));
+        Gauge(C.DeviceLastReport, LastReports);
 
         // TPV.
         Gauge(C.TpvMode, s => PerDevice(s, d => d.TpvMode));
@@ -211,6 +219,53 @@ internal sealed class GpsdMetrics : IDisposable
                     yield return new Measurement<double>(v, SatelliteTags(device.Path, satellite));
                 }
             }
+        }
+    }
+
+    private static IEnumerable<Measurement<double>> VersionInfo(StateSnapshot snapshot)
+    {
+        if (snapshot.Version is not { } version)
+        {
+            yield break;
+        }
+
+        var tags = new List<KeyValuePair<string, object?>>(4);
+        AddIfPresent(tags, "release", version.Release);
+        AddIfPresent(tags, "rev", version.Rev);
+        AddIfPresent(tags, "proto_major", version.ProtoMajor is { } major ? Label(major) : null);
+        AddIfPresent(tags, "proto_minor", version.ProtoMinor is { } minor ? Label(minor) : null);
+        yield return new Measurement<double>(1, tags);
+    }
+
+    private static IEnumerable<Measurement<double>> DeviceInfo(StateSnapshot snapshot)
+    {
+        foreach (var device in snapshot.Devices)
+        {
+            var tags = new List<KeyValuePair<string, object?>>(3) { DeviceTag(device) };
+            AddIfPresent(tags, "driver", device.Info?.Driver);
+            AddIfPresent(tags, "subtype", device.Info?.Subtype);
+            yield return new Measurement<double>(1, tags);
+        }
+    }
+
+    /// <summary>Not subject to staleness: it says when data last arrived, which is the point when it is stale.</summary>
+    private static IEnumerable<Measurement<double>> LastReports(StateSnapshot snapshot)
+    {
+        foreach (var device in snapshot.Devices)
+        {
+            foreach (var (cls, at) in device.LastReport)
+            {
+                yield return new Measurement<double>(UnixSeconds(at)!.Value, DeviceTag(device), new("class", cls.Label()));
+            }
+        }
+    }
+
+    /// <summary>Labels gpsd did not send are left off, not set to an empty value.</summary>
+    private static void AddIfPresent(List<KeyValuePair<string, object?>> tags, string name, string? value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            tags.Add(new(name, value));
         }
     }
 
