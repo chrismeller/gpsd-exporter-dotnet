@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>GpsdExporter.Tests.Release</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Release smoke tests run the published binary and image (CI only), so this
+       project deliberately has no reference to the exporter project. -->
+</Project>
