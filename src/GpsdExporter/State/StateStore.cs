@@ -7,12 +7,32 @@ namespace GpsdExporter.State;
 /// connection's reader calls <see cref="Apply"/> and <see cref="Reset"/>; each call replaces
 /// <see cref="Current"/> with a new immutable <see cref="GpsdState"/>.
 /// </summary>
-internal sealed class StateStore(TimeProvider timeProvider)
+/// <remarks>
+/// Readers never lock: each state is immutable, and it is published with a single volatile
+/// reference write, so a reader sees either the whole of one state or the whole of the next.
+/// A scrape takes one <see cref="Snapshot"/> at the start of collection (AC4.7).
+/// </remarks>
+internal sealed class StateStore(TimeProvider timeProvider, StalenessOptions staleness)
 {
     /// <summary>The most devices tracked at once; reports from more are skipped (AC6.6).</summary>
     public const int MaxDevices = 16;
 
-    public GpsdState Current { get; private set; } = GpsdState.Empty;
+    private GpsdState _current = GpsdState.Empty;
+
+    public StateStore(TimeProvider timeProvider)
+        : this(timeProvider, new StalenessOptions())
+    {
+    }
+
+    /// <summary>The latest published state. Safe to read from any thread.</summary>
+    public GpsdState Current
+    {
+        get => Volatile.Read(ref _current);
+        private set => Volatile.Write(ref _current, value);
+    }
+
+    /// <summary>The latest state and the current time, for one scrape. Safe to call from any thread.</summary>
+    public StateSnapshot Snapshot() => new(Current, timeProvider.GetUtcNow(), staleness);
 
     /// <summary>Forgets everything, as on disconnect (AC4.5).</summary>
     public void Reset() => Current = GpsdState.Empty;
