@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  CONFIGURATION: Release
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (version from global.json)
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      # NuGet audit runs during restore and, with warnings as errors, fails on any
+      # known-vulnerable package, direct or transitive (AC12.5).
+      - name: Restore
+        run: dotnet restore
+
+      # Compiler, analyzer, trim and AOT warnings are errors (Directory.Build.props).
+      - name: Build
+        run: dotnet build --no-restore --configuration "$CONFIGURATION"
+
+      - name: Test
+        run: >-
+          dotnet test --no-build --configuration "$CONFIGURATION"
+          --results-directory "$GITHUB_WORKSPACE/TestResults"
+          --report-xunit-trx
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results
+          path: TestResults/
+          if-no-files-found: warn
+
+      # A second, explicit vulnerability check (T12.3). Restore already fails on these,
+      # but this lists every vulnerable package in the log.
+      - name: Check for vulnerable packages
+        run: |
+          dotnet list package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then
+            echo "::error::Known-vulnerable NuGet packages are referenced."
+            exit 1
+          fi
+
+  repository-checks:
+    name: Repository checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # T12.1 / AC12.1: nothing may refer to the original Go project, except the
+      # README's acknowledgement of it.
+      # The name is split so that this check does not match its own workflow file.
+      - name: No references to the original repository
+        run: |
+          name="nate""sales"
+          if git grep -n -i "$name" -- . ':(exclude)README.md'; then
+            echo "::error::Found references to $name outside README.md."
+            exit 1
+          fi
+
+      # AC12.3: every third-party action is pinned to a full commit SHA.
+      - name: Actions are pinned to commit SHAs
+        run: |
+          if grep -rnE '^\s*-?\s*uses:\s*[^.][^@]*@' .github/workflows \
+              | grep -vE '@[0-9a-f]{40}(\s|$)'; then
+            echo "::error::Every action must be pinned to a 40-character commit SHA."
+            exit 1
+          fi
