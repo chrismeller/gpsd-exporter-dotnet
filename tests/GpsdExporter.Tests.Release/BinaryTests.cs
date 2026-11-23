@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Sockets;
 using GpsdExporter.Testing;
 using GpsdExporter.Testing.Prometheus;
 
@@ -26,7 +24,7 @@ public sealed class BinaryTests
     public async Task T11_2_Go_flags_against_FakeGpsd_serve_metrics()
     {
         await using var gpsd = FakeGpsd.CreateStarted();
-        var port = FreePort();
+        var port = Scraping.FreePort();
         using var process = PublishedBinary.Start("-d", gpsd.Address, "-l", $"127.0.0.1:{port}", "-p", "10s");
         var output = new OutputCollector(process);
         try
@@ -34,11 +32,11 @@ public sealed class BinaryTests
             var connection = await gpsd.AcceptAsync(Ct);
             await connection.WaitForLineAsync("""?WATCH={"enable":true,"json":true,"pps":true};""", Ct);
             using var http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}") };
-            await ScrapeUntil(http, s => s.Find("gpsd_up")?.Value == 1, "gpsd_up is 1");
+            await Scraping.Until(http, s => s.Find("gpsd_up")?.Value == 1, "gpsd_up is 1", Ct);
 
             var now = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", System.Globalization.CultureInfo.InvariantCulture);
             await connection.SendLineAsync($$"""{"class":"TPV","device":"/dev/ttyACM0","mode":3,"time":"{{now}}","lat":51.5,"lon":-0.1}""", Ct);
-            var scrape = await ScrapeUntil(http, s => s.Has("gpsd_tpv_latitude_degrees", ("device", "/dev/ttyACM0")), "the TPV is served");
+            var scrape = await Scraping.Until(http, s => s.Has("gpsd_tpv_latitude_degrees", ("device", "/dev/ttyACM0")), "the TPV is served", Ct);
 
             scrape.Value("gpsd_tpv_latitude_degrees", ("device", "/dev/ttyACM0")).ShouldBe(51.5);
             scrape.Value("gpsd_tpv_mode", ("device", "/dev/ttyACM0")).ShouldBe(3);
@@ -54,41 +52,5 @@ public sealed class BinaryTests
             process.Kill(entireProcessTree: true);
             await process.WaitForExitAsync(CancellationToken.None);
         }
-    }
-
-    private static async Task<PrometheusText> ScrapeUntil(HttpClient http, Func<PrometheusText, bool> condition, string because)
-    {
-        var deadline = DateTime.UtcNow + PublishedBinary.Limit;
-        var last = "(no scrape)";
-        while (true)
-        {
-            try
-            {
-                last = await http.GetStringAsync(new Uri("/metrics", UriKind.Relative), Ct);
-                var scrape = PrometheusText.Parse(last);
-                if (condition(scrape))
-                {
-                    return scrape;
-                }
-            }
-            catch (HttpRequestException) when (DateTime.UtcNow < deadline)
-            {
-                // Not listening yet.
-            }
-
-            if (DateTime.UtcNow > deadline)
-            {
-                throw new TimeoutException($"Timed out waiting until {because}. Last scrape:\n{last}");
-            }
-
-            await Task.Delay(50, Ct);
-        }
-    }
-
-    private static int FreePort()
-    {
-        using var listener = new TcpListener(IPAddress.Loopback, 0);
-        listener.Start();
-        return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 }
