@@ -1,0 +1,110 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    // config:recommended, plus actions and images pinned by digest and config migration PRs.
+    'config:best-practices',
+    // Conventional Commit messages and PR titles (Release Please reads them; see the README).
+    ':semanticCommits',
+  ],
+  labels: ['dependencies'],
+
+  // config:recommended skips anything under tests/; here that would hide the Grafana image the
+  // dashboard test pins. Nothing in this repository needs skipping.
+  ignorePaths: [],
+
+  // Merge every update, once every check on its pull request has passed. Renovate does the
+  // merge itself (platformAutomerge off) so it waits for all checks, including the binary and
+  // image builds, not only the ones a branch ruleset requires. A failing or pending check
+  // leaves the pull request open.
+  automerge: true,
+  automergeType: 'pr',
+  automergeStrategy: 'squash',
+  platformAutomerge: false,
+  ignoreTests: false,
+
+  prHourlyLimit: 4,
+  prConcurrentLimit: 10,
+
+  // Hold a pull request back until its checks inside Renovate (such as the release age) pass,
+  // rather than opening it with a pending status.
+  internalChecksFilter: 'strict',
+
+  // Security fixes for NuGet packages, from OSV, merged as soon as their checks pass.
+  osvVulnerabilityAlerts: true,
+  vulnerabilityAlerts: {
+    labels: ['dependencies', 'security'],
+    minimumReleaseAge: null,
+    automerge: true,
+  },
+
+  customManagers: [
+    {
+      // The Grafana image the dashboard import test (T9.1) runs against. The Prometheus image
+      // in the same file is left alone: it must match the promtool version and checksum in
+      // ci.yml, which Renovate cannot update together.
+      customType: 'regex',
+      description: 'Grafana image in the dashboard import test',
+      managerFilePatterns: ['/^tests/GpsdExporter\\.Tests\\.Release/DashboardImportTests\\.cs$/'],
+      matchStrings: ['GrafanaImage = "(?<depName>grafana/grafana):(?<currentValue>[^"@]+)"'],
+      datasourceTemplate: 'docker',
+    },
+  ],
+
+  packageRules: [
+    {
+      description: 'Give new NuGet releases three days before updating to them (security fixes are exempt).',
+      matchDatasources: ['nuget'],
+      minimumReleaseAge: '3 days',
+    },
+    {
+      description: 'OpenTelemetry packages are released together.',
+      matchPackageNames: ['/^OpenTelemetry(\\..+)?$/'],
+      groupName: 'OpenTelemetry',
+    },
+    {
+      description: 'Test-only packages, in one pull request.',
+      matchPackageNames: [
+        '/^xunit\\./',
+        'Shouldly',
+        '/^NSubstitute(\\..+)?$/',
+        '/^Verify\\./',
+        'FsCheck',
+        '/^Testcontainers(\\..+)?$/',
+        'Microsoft.Extensions.TimeProvider.Testing',
+        'Microsoft.AspNetCore.Mvc.Testing',
+      ],
+      groupName: 'test dependencies',
+    },
+    {
+      // fix(deps) shows in the changelog and makes Release Please propose a patch release;
+      // everything else stays chore(deps), which does not.
+      description: 'Updates to what ships in the binary or image are fixes, so they reach the next release.',
+      matchPackageNames: ['/^OpenTelemetry(\\..+)?$/', 'dotnet-sdk', 'mcr.microsoft.com/dotnet/runtime-deps'],
+      semanticCommitType: 'fix',
+    },
+    {
+      // The test's image name is a plain C# string; keep it a tag rather than add a digest.
+      description: 'No digest pinning for the Grafana image in the dashboard test.',
+      matchManagers: ['custom.regex'],
+      pinDigests: false,
+    },
+    {
+      // Moving to a new .NET major (SDK, runtime-deps base image, ASP.NET Core test host) is a
+      // deliberate change across global.json, the target framework and the Dockerfile together,
+      // so Renovate does not propose those majors one by one. Minor and patch updates still apply.
+      description: 'Leave .NET major upgrades to a planned change.',
+      matchPackageNames: ['dotnet-sdk', 'mcr.microsoft.com/dotnet/runtime-deps', 'Microsoft.AspNetCore.Mvc.Testing'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+    {
+      // AC11.7: the binaries are built in debian:12 so they need nothing newer than glibc 2.36
+      // and run on Debian 12 and Raspberry Pi OS bookworm. Digest updates of 12 still apply.
+      description: 'Keep the binary build container and its test on Debian 12.',
+      matchDatasources: ['docker'],
+      matchPackageNames: ['debian'],
+      matchUpdateTypes: ['major'],
+      enabled: false,
+    },
+  ],
+}
