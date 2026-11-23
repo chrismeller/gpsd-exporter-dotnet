@@ -55,6 +55,11 @@ internal sealed class MetricsHost : IAsyncDisposable
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 23, 10, 0, 0, TimeSpan.Zero));
 
+    /// <summary>A client for the in-process test server.</summary>
+    public HttpClient Client => _client;
+
+    public IServiceProvider Services => _factory.Services;
+
     public StateStore Store => _factory.Services.GetRequiredService<StateStore>();
 
     public ConnectionStats Stats => _factory.Services.GetRequiredService<ConnectionStats>();

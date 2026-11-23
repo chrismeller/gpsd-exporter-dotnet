@@ -1,8 +1,10 @@
 using GpsdExporter;
 using GpsdExporter.Configuration;
-using GpsdExporter.Metrics;
+using GpsdExporter.Http;
 
-// Exit codes: 0 normal, 2 invalid command line or configuration.
+// Exit codes: 0 normal, 1 the HTTP port could not be bound, 2 invalid command line or
+// configuration. A gpsd connection problem never ends the process (AC1.6).
+const int BindFailed = 1;
 const int InvalidConfiguration = 2;
 
 var commandLine = CommandLine.Parse(args);
@@ -41,9 +43,22 @@ if (commandLine.PollIgnored)
     StartupLog.PollIgnored(app.Logger);
 }
 
-app.MapGpsdMetrics(settings.Http.MetricsPath);
+app.MapExporterEndpoints(settings.Http.MetricsPath);
 
-await app.RunAsync().ConfigureAwait(false);
+try
+{
+    await app.StartAsync().ConfigureAwait(false);
+}
+catch (IOException e)
+{
+    // Kestrel could not bind the listen address (in use, or not permitted).
+    Console.Error.WriteLine($"gpsd-exporter: {e.Message}");
+    await app.DisposeAsync().ConfigureAwait(false);
+    return BindFailed;
+}
+
+await app.WaitForShutdownAsync().ConfigureAwait(false);
+await app.DisposeAsync().ConfigureAwait(false);
 return 0;
 
 static int Fail(IReadOnlyList<string> problems, bool showUsage)

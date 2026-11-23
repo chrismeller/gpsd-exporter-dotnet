@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using GpsdExporter.Testing;
@@ -6,7 +9,7 @@ using GpsdExporter.Testing.Prometheus;
 
 namespace GpsdExporter.Tests.Integration;
 
-/// <summary>The real executable, run as a process: command line, exit codes and start-up (AC5.6, AC11.2).</summary>
+/// <summary>The real executable, run as a process: command line, exit codes, start-up and HTTP limits (AC1.6, AC5.6, AC5.7, AC11.2).</summary>
 public sealed partial class ProgramTests
 {
     private static readonly TimeSpan Limit = TimeSpan.FromSeconds(20);
@@ -81,6 +84,55 @@ public sealed partial class ProgramTests
             scrape.Value("gpsd_up").ShouldBe(1);
             output.Text.ShouldContain("-p is ignored");
             output.Text.ShouldContain("dbug:"); // -v turned on Debug.
+        }
+        finally
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task AC1_6_a_port_that_cannot_be_bound_exits_1()
+    {
+        using var taken = new TcpListener(IPAddress.Loopback, 0);
+        taken.Start();
+        var port = ((IPEndPoint)taken.LocalEndpoint).Port;
+
+        var run = await RunToExitAsync("-l", $"127.0.0.1:{port}", "-d", "127.0.0.1:1");
+
+        run.ExitCode.ShouldBe(1);
+        run.Stderr.ShouldStartWith("gpsd-exporter: ");
+        run.Stderr.ShouldContain(port.ToString(CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task T5_6_a_client_sending_headers_slowly_is_closed_after_the_header_timeout()
+    {
+        using var process = Start("-l", "127.0.0.1:0", "-d", "127.0.0.1:1");
+        var output = new OutputCollector(process);
+        try
+        {
+            var listening = await output.WaitForAsync(ListeningOn(), Limit);
+            var url = new Uri(ListeningOn().Match(listening).Groups["url"].Value);
+
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, url.Port, Ct);
+            var stream = client.GetStream();
+            var started = Stopwatch.StartNew();
+            await stream.WriteAsync("GET /metrics HTTP/1.1\r\nHost: localhost\r\n"u8.ToArray(), Ct);
+
+            // Never finish the headers. Kestrel may answer 408 before it closes; either way
+            // the stream ends.
+            var buffer = new byte[4096];
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            timeout.CancelAfter(Limit);
+            while (await stream.ReadAsync(buffer, timeout.Token) > 0)
+            {
+            }
+
+            started.Elapsed.ShouldBeGreaterThan(TimeSpan.FromSeconds(9));
+            started.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(15));
         }
         finally
         {

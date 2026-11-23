@@ -1,4 +1,4 @@
-using System.Net;
+using GpsdExporter.Http;
 using Microsoft.Extensions.Logging.Console;
 
 namespace GpsdExporter.Configuration;
@@ -19,7 +19,7 @@ internal static class HostConfiguration
             .AddCommandLine([.. commandLineArgs]);
     }
 
-    /// <summary>Applies the listen address and the console log format.</summary>
+    /// <summary>Applies the listen address, Kestrel's limits and the console log format.</summary>
     public static WebApplicationBuilder ConfigureExporterHost(this WebApplicationBuilder builder, ExporterSettings settings)
     {
         ArgumentNullException.ThrowIfNull(builder);
@@ -32,6 +32,7 @@ internal static class HostConfiguration
 
         builder.WebHost.ConfigureKestrel(kestrel =>
         {
+            HttpEndpoints.ApplyLimits(kestrel.Limits);
             switch (listen)
             {
                 case { Localhost: true }:
