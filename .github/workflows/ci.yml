@@ -79,10 +79,12 @@ jobs:
 
       # T12.1 / AC12.1: nothing may refer to the original Go project, except the
       # README's acknowledgement of it.
+      # The name is split so that this check does not match its own workflow file.
       - name: No references to the original repository
         run: |
-          if git grep -n -i "natesales" -- . ':(exclude)README.md'; then
-            echo "::error::Found references to natesales outside README.md."
+          name="nate""sales"
+          if git grep -n -i "$name" -- . ':(exclude)README.md'; then
+            echo "::error::Found references to $name outside README.md."
             exit 1
           fi
 
