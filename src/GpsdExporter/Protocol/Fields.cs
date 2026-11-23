@@ -83,6 +83,21 @@ internal enum SatelliteField
     PrRes,
 }
 
+/// <summary>Maps a field enum to array indexes. The enums are dense and start at 0.</summary>
+internal static class FieldIndex<TField>
+    where TField : struct, Enum
+{
+    public static TField[] All { get; } = Enum.GetValues<TField>();
+
+    public static int Count { get; } = All.Length;
+
+    public static int Of(TField field)
+    {
+        var i = Unsafe.As<TField, int>(ref field);
+        return (uint)i < (uint)Count ? i : throw new ArgumentOutOfRangeException(nameof(field), field, null);
+    }
+}
+
 /// <summary>
 /// An immutable set of optional numeric values keyed by a field enum. A field gpsd did not
 /// send is absent, never 0 (AC3.1); a field gpsd sent as 0 is present with value 0 (AC3.2).
@@ -90,7 +105,7 @@ internal enum SatelliteField
 internal readonly struct FieldValues<TField> : IEquatable<FieldValues<TField>>
     where TField : struct, Enum
 {
-    private static readonly int Count = Enum.GetValues<TField>().Length;
+    private static int Count => FieldIndex<TField>.Count;
 
     private readonly double?[]? _values;
 
@@ -112,7 +127,7 @@ internal readonly struct FieldValues<TField> : IEquatable<FieldValues<TField>>
                 yield break;
             }
 
-            var all = Enum.GetValues<TField>();
+            var all = FieldIndex<TField>.All;
             for (var i = 0; i < all.Length; i++)
             {
                 if (_values[i] is { } v)
@@ -158,11 +173,7 @@ internal readonly struct FieldValues<TField> : IEquatable<FieldValues<TField>>
     public override string ToString() =>
         "{" + string.Join(", ", Present.Select(p => $"{p.Field}={p.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}")) + "}";
 
-    private static int Index(TField field)
-    {
-        var i = Unsafe.As<TField, int>(ref field);
-        return (uint)i < (uint)Count ? i : throw new ArgumentOutOfRangeException(nameof(field), field, null);
-    }
+    private static int Index(TField field) => FieldIndex<TField>.Of(field);
 
     /// <summary>Accumulates values, then produces an immutable <see cref="FieldValues{TField}"/>.</summary>
     public sealed class Builder
