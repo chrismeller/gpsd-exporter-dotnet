@@ -39,7 +39,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     # AC11.7: built against Debian 12's glibc 2.36, so the binary also runs on Debian 12
     # and Raspberry Pi OS bookworm. Native AOT links against the build machine's glibc.
-    container: debian:12
+    container: debian:12@sha256:268fb24c39bca92d326dd83ea3abebe4a3f7751c804ffef23bb6d857dd343ff8
     timeout-minutes: 30
     env:
       RID: ${{ matrix.rid }}
