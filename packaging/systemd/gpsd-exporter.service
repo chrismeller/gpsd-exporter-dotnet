@@ -1,0 +1,52 @@
+# systemd unit for the gpsd-exporter binary (R11, AC11.4).
+#
+# Install:
+#   sudo install -m 0755 gpsd-exporter-linux-<arch> /usr/local/bin/gpsd-exporter
+#   sudo install -m 0644 gpsd-exporter.service /etc/systemd/system/
+#   sudo install -m 0644 gpsd-exporter.env /etc/default/gpsd-exporter   # optional settings
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gpsd-exporter
+#
+# Settings go in /etc/default/gpsd-exporter as GPSD_EXPORTER_ variables; see that file.
+
+[Unit]
+Description=Prometheus exporter for gpsd
+Documentation=https://github.com/chrismeller/gpsd-exporter-dotnet
+After=network-online.target gpsd.service
+Wants=network-online.target gpsd.service
+
+[Service]
+Type=exec
+ExecStart=/usr/local/bin/gpsd-exporter
+EnvironmentFile=-/etc/default/gpsd-exporter
+Restart=on-failure
+RestartSec=5s
+# Exit code 2 is invalid configuration: restarting will not fix it.
+RestartPreventExitStatus=2
+
+# Runs as a transient, unprivileged user with no access to the rest of the system. It only
+# needs to reach gpsd and accept HTTP connections.
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

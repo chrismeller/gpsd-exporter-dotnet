@@ -141,6 +141,27 @@ jobs:
           --results-directory "$GITHUB_WORKSPACE/TestResults"
           --report-xunit-trx
 
+      # AC11.4: the binary runs under the shipped unit, sandboxing and all, as a transient
+      # unprivileged user. No gpsd is installed, so it serves gpsd_up 0.
+      - name: Run under the systemd unit
+        run: |
+          sudo install -m 0755 "dist/gpsd-exporter-$RID" /usr/local/bin/gpsd-exporter
+          sudo install -m 0644 packaging/systemd/gpsd-exporter.service /etc/systemd/system/
+          printf 'GPSD_EXPORTER_HTTP__LISTEN=127.0.0.1:9978\n' | sudo tee /etc/default/gpsd-exporter
+          sudo systemctl daemon-reload
+          sudo systemctl start gpsd-exporter
+          for _ in $(seq 1 50); do curl -fsS http://127.0.0.1:9978/healthz && break; sleep 0.2; done
+          curl -fsS http://127.0.0.1:9978/metrics | grep -E '^gpsd_up(\{\})? 0$'
+          systemctl is-active gpsd-exporter
+          pid=$(systemctl show --property MainPID --value gpsd-exporter)
+          user=$(ps -o user= -p "$pid")
+          echo "gpsd-exporter runs as $user (pid $pid)."
+          test "$user" != root
+
+      - name: Show the unit's log
+        if: ${{ failure() }}
+        run: sudo journalctl -u gpsd-exporter --no-pager
+
       - name: Upload test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
