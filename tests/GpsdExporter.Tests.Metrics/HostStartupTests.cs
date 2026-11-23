@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace GpsdExporter.Tests.Metrics;
 
+[Collection(Exposition.SerialHostTests.Name)]
 public sealed class HostStartupTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {

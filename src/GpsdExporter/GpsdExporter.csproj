@@ -17,6 +17,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OpenTelemetry" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="GpsdExporter.Tests.Unit" />
     <InternalsVisibleTo Include="GpsdExporter.Tests.Metrics" />
     <InternalsVisibleTo Include="GpsdExporter.Tests.Integration" />
