@@ -23,6 +23,11 @@ To produce the native binary:
 dotnet publish src/GpsdExporter -r linux-x64 -c Release
 ```
 
+Exposition tests use [Verify](https://github.com/VerifyTests/Verify) for snapshots. Approved snapshots are
+`*.verified.txt` files under `tests/GpsdExporter.Tests.Metrics/Snapshots`; a mismatch writes a `.received.txt`
+next to it (ignored by git). Verify's licence check is satisfied by its OpenSource exemption in
+`Directory.Build.props`, which must be renewed before `Verify_SponsorshipExemptionUntil`.
+
 ## Layout
 
 | Path | Contents |
@@ -32,7 +37,7 @@ dotnet publish src/GpsdExporter -r linux-x64 -c Release
 | `tests/GpsdExporter.Tests.Metrics` | Exposition tests: the host in-process, `/metrics` scraped and parsed. |
 | `tests/GpsdExporter.Tests.Integration` | The exporter against FakeGpsd, a scripted in-process TCP server. |
 | `tests/GpsdExporter.Tests.Release` | Smoke tests for the published binary and image. Skipped unless `GPSD_EXPORTER_BINARY` is set. |
-| `tests/GpsdExporter.Testing` | Shared test helpers: the fixture loader and FakeGpsd. |
+| `tests/GpsdExporter.Testing` | Shared test helpers: the fixture loader, FakeGpsd, and the Prometheus text parser and snapshot normalizer. |
 | `tests/fixtures` | gpsd sessions as `.jsonl`, built from `gpsd_json(5)` and gpsd's regression logs. See its README. |
 
 ## Licence
