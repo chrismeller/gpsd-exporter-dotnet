@@ -1,7 +1,7 @@
 namespace GpsdExporter.Metrics;
 
 /// <summary>The <c>Metrics</c> configuration section.</summary>
-internal sealed class MetricsOptions
+internal sealed record MetricsOptions
 {
     public const string Section = "Metrics";
 

@@ -171,7 +171,9 @@ public sealed class GpsdConnectionManagerTests
         harness.Store.Current.Devices.ShouldBeEmpty();
         harness.Store.Current.Version.ShouldBeNull();
 
-        // The connection had delivered VERSION, so the backoff starts again from 1 s.
+        // The connection had delivered VERSION, so the backoff starts again from 1 s. The delay
+        // is set just after the disconnect is counted, so wait for it.
+        await ConnectionHarness.WaitUntil(() => harness.Stats.ReconnectDelay > TimeSpan.Zero, "the reconnect delay is set");
         harness.Stats.ReconnectDelay.TotalSeconds.ShouldBeInRange(0.8, 1.2);
         await harness.AdvanceUntil(() => gpsd.Connections.Count == 2, TimeSpan.FromMilliseconds(250), TimeSpan.FromSeconds(2), "a reconnect");
         await ConnectionHarness.WaitUntil(() => harness.Stats.Up, "gpsd_up after the new VERSION");
@@ -226,6 +228,8 @@ public sealed class GpsdConnectionManagerTests
         await connection.SendLineAsync(FakeGpsd.DefaultVersionLine, Ct);
         await ConnectionHarness.WaitUntil(() => harness.Stats.Messages(GpsdClass.Version) == 2, "the reply is processed");
 
+        // The message is counted before the manager re-arms its idle timer; let it finish.
+        await ConnectionHarness.Settle();
         harness.Time.Advance(TimeSpan.FromSeconds(10));
         await ConnectionHarness.Settle();
 
