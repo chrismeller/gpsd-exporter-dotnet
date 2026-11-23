@@ -157,6 +157,23 @@ internal sealed class MetricsHost : IAsyncDisposable
         }
     }
 
+    /// <summary>Advances fake time in steps, with a moment of real time after each, until <paramref name="condition"/> holds.</summary>
+    public async Task AdvanceUntil(Func<bool> condition, TimeSpan step, TimeSpan max, string because)
+    {
+        var advanced = TimeSpan.Zero;
+        while (!condition())
+        {
+            if (advanced >= max)
+            {
+                throw new TimeoutException($"{because} did not happen within {max} of fake time.");
+            }
+
+            Time.Advance(step);
+            advanced += step;
+            await Task.Delay(20, Ct);
+        }
+    }
+
     /// <summary>Parses and applies each line; returns every parse result.</summary>
     public IReadOnlyList<ParseResult> Apply(params IEnumerable<string> lines)
     {
