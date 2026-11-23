@@ -1,22 +1,31 @@
 name: Release
 
-# R12 / AC12.2: a vX.Y.Z tag publishes the release. The version comes from the tag, is built
-# into the binaries (--version, gpsd_exporter_build_info) and the image label, and is checked
-# before anything is published. Publishing happens only after both binaries and both image
-# architectures have passed their tests:
+# R12 / AC12.2: publishes a release. Release Please creates the vX.Y.Z tag and the GitHub release
+# when its release pull request is merged, then calls this workflow (release-please.yml) with the
+# version and the tag. The version is built into the binaries (--version, gpsd_exporter_build_info)
+# and the image label, and is checked before anything is published. Publishing happens only after
+# both binaries and both image architectures have passed their tests:
 #   - the image goes to GHCR as ghcr.io/chrismeller/gpsd-exporter-dotnet:X.Y.Z and :latest;
-#   - a GitHub release gets both binaries, their checksums and the systemd unit and env file.
+#   - the GitHub release gets both binaries, their checksums and the systemd unit and env file.
 #
 # T12.2: a dry run builds and checks everything and publishes nothing. It runs on a pull
 # request that changes this workflow, or by hand (workflow_dispatch) with a test version; the
 # release files are then uploaded as the release-files artifact instead.
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_call:
+    inputs:
+      version:
+        description: The release version, X.Y.Z.
+        type: string
+        required: true
+      tag:
+        description: The release's tag, vX.Y.Z. It and its GitHub release must already exist.
+        type: string
+        required: true
   pull_request:
     paths:
       - .github/workflows/release.yml
+      - .github/workflows/release-please.yml
       - scripts/check-release-version.sh
   workflow_dispatch:
     inputs:
@@ -44,41 +53,47 @@ jobs:
     timeout-minutes: 5
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
       publish: ${{ steps.version.outputs.publish }}
     steps:
       - name: Work out the version
         id: version
         env:
           EVENT: ${{ github.event_name }}
-          REF_NAME: ${{ github.ref_name }}
           INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TAG: ${{ inputs.tag }}
           RUN_NUMBER: ${{ github.run_number }}
         run: |
-          case "$EVENT" in
-            push)
-              # Only an exact vX.Y.Z tag publishes; v1.2 or v1.2.3-rc1 is refused.
-              if ! [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-                echo "::error::Tag '$REF_NAME' is not vX.Y.Z."
-                exit 1
-              fi
-              version="${REF_NAME#v}"
-              publish=true
-              ;;
-            workflow_dispatch)
-              version="$INPUT_VERSION"
-              publish=false
-              ;;
-            *)
-              version="0.0.0-dryrun.$RUN_NUMBER"
-              publish=false
-              ;;
-          esac
+          # Only the workflow_call from Release Please passes a tag, and only it publishes.
+          if [ -n "$INPUT_TAG" ]; then
+            # Only an exact X.Y.Z release whose tag is vX.Y.Z publishes.
+            if ! [[ "$INPUT_VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "::error::'$INPUT_VERSION' is not X.Y.Z."
+              exit 1
+            fi
+            if [ "$INPUT_TAG" != "v$INPUT_VERSION" ]; then
+              echo "::error::Tag '$INPUT_TAG' does not match version $INPUT_VERSION."
+              exit 1
+            fi
+            version="$INPUT_VERSION"
+            tag="$INPUT_TAG"
+            publish=true
+          elif [ "$EVENT" = workflow_dispatch ]; then
+            version="$INPUT_VERSION"
+            tag=""
+            publish=false
+          else
+            version="0.0.0-dryrun.$RUN_NUMBER"
+            tag=""
+            publish=false
+          fi
           if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::'$version' is not a version."
             exit 1
           fi
           echo "Version $version (publish: $publish)."
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
 
   binaries:
@@ -211,7 +226,7 @@ jobs:
         run: docker logout ghcr.io
 
   publish-release:
-    name: Publish the GitHub release
+    name: Attach the files to the GitHub release
     needs: [version, files, publish-image]
     if: ${{ needs.version.outputs.publish == 'true' }}
     runs-on: ubuntu-24.04
@@ -227,11 +242,12 @@ jobs:
           name: release-files
           path: release
 
-      - name: Create the release
+      # Release Please has already created the release, with its changelog as the notes.
+      - name: Attach the release files
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
-          gh release create "$TAG" release/* --repo "$REPO" --verify-tag \
-            --title "gpsd-exporter $VERSION" --generate-notes
+          gh release view "$TAG" --repo "$REPO" --json tagName,url
+          gh release upload "$TAG" release/* --repo "$REPO" --clobber
