@@ -122,7 +122,7 @@ public sealed class GpsdConnectionManagerTests
         harness.Stats.ParseErrors(ParseErrorReason.InvalidJson).ShouldBe(1);
         harness.Stats.ParseErrors(ParseErrorReason.BadField).ShouldBe(1);
         harness.Stats.LastMessageAt.ShouldNotBeNull();
-        harness.Logger.Entries.ShouldContain(e => e.Level == LogLevel.Information && e.Message.Contains("Device added: /dev/ttyACM0", StringComparison.Ordinal));
+        await harness.WaitForLog(e => e.Level == LogLevel.Information && e.Message.Contains("Device added: /dev/ttyACM0", StringComparison.Ordinal), "the device is logged");
     }
 
     [Fact]
@@ -135,7 +135,8 @@ public sealed class GpsdConnectionManagerTests
         await ConnectionHarness.WaitUntil(() => !harness.Store.Current.Devices.IsEmpty, "the TPV is applied");
 
         await connection.CloseAsync();
-        await ConnectionHarness.WaitUntil(() => harness.Stats.ReconnectDelay > TimeSpan.Zero, "the reconnect is scheduled");
+        // Each event is logged just after its counter changes, so wait for the last log line.
+        await harness.WaitForLog(e => e.Message.StartsWith($"Reconnecting to gpsd at {gpsd.Address} in ", StringComparison.Ordinal), "the reconnect is logged");
 
         var info = harness.Logger.Entries.Where(e => e.Level == LogLevel.Information).Select(e => e.Message).ToList();
         info.ShouldContain($"Connected to gpsd at {gpsd.Address}");
@@ -153,7 +154,7 @@ public sealed class GpsdConnectionManagerTests
         var connection = await ConnectedAsync(gpsd, harness);
 
         await connection.SendLinesAsync(["not json", "[1,2]", """{"class":"TPV","device":"/dev/ttyACM0","mode":3,"lat":"x"}"""], Ct);
-        await ConnectionHarness.WaitUntil(() => harness.Stats.ParseErrors(ParseErrorReason.BadField) == 1, "every line is processed");
+        await harness.WaitForLog(e => e.Level == LogLevel.Debug && e.Message.StartsWith("Discarded a gpsd line (bad_field)", StringComparison.Ordinal), "every line is logged");
 
         var entries = harness.Logger.Entries;
         entries.ShouldContain(e => e.Level == LogLevel.Debug && e.Message == "Discarded a gpsd line (invalid_json): not json");
@@ -403,9 +404,9 @@ public sealed class GpsdConnectionManagerTests
         var connection = await ConnectedAsync(gpsd, harness);
 
         await connection.SendLineAsync("""{"class":"ERROR","message":"Unrecognized request '?FOO'"}""", Ct);
-        await ConnectionHarness.WaitUntil(() => harness.Stats.Messages(GpsdClass.Error) == 1, "the ERROR is processed");
+        await harness.WaitForLog(e => e.Level == LogLevel.Warning && e.Message.Contains("?FOO", StringComparison.Ordinal), "the ERROR is logged");
 
-        harness.Logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning && e.Message.Contains("?FOO", StringComparison.Ordinal));
+        harness.Stats.Messages(GpsdClass.Error).ShouldBe(1);
         harness.Stats.Up.ShouldBeTrue();
         connection.IsClosed.ShouldBeFalse();
     }
