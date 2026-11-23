@@ -1,0 +1,150 @@
+name: Binaries
+
+# R11: the single-file Native AOT binary for linux-x64 and linux-arm64. CI calls this on
+# every push and pull request; the release workflow calls it with the tag's version.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version embedded in the binary (gpsd_exporter_build_info, --version).
+        type: string
+        default: 0.0.0-dev
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version embedded in the binary.
+        type: string
+        default: 0.0.0-dev
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+jobs:
+  build:
+    name: Build ${{ matrix.rid }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # AC11.8: arm64 is built natively on an arm64 runner, not under QEMU.
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    # AC11.7: built against Debian 12's glibc 2.36, so the binary also runs on Debian 12
+    # and Raspberry Pi OS bookworm. Native AOT links against the build machine's glibc.
+    container: debian:12
+    timeout-minutes: 30
+    env:
+      RID: ${{ matrix.rid }}
+      VERSION: ${{ inputs.version || '0.0.0-dev' }}
+      # The SDK itself needs ICU unless globalization is invariant (the exporter is invariant too).
+      DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
+    steps:
+      - name: Install the Native AOT toolchain
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git clang zlib1g-dev binutils
+
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (version from global.json)
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      # T11.3: no AOT or trim warnings. They are errors in the build already
+      # (TreatWarningsAsErrors, IlcTreatWarningsAsErrors); this also fails on any that slip
+      # through as plain output.
+      - name: Publish
+        run: |
+          dotnet publish src/GpsdExporter --configuration Release --runtime "$RID" \
+            -p:Version="$VERSION" --output out 2>&1 | tee publish.log
+          if grep -nE ': warning [A-Z]+[0-9]+' publish.log; then
+            echo "::error::The publish produced warnings."
+            exit 1
+          fi
+
+      - name: Check the glibc requirement (T11.5)
+        run: scripts/check-glibc.sh out/gpsd-exporter 2.36
+
+      - name: Name the binary and write its checksum (AC11.5)
+        run: |
+          mkdir dist
+          cp out/gpsd-exporter "dist/gpsd-exporter-$RID"
+          cd dist
+          sha256sum "gpsd-exporter-$RID" > "gpsd-exporter-$RID.sha256"
+          cat "gpsd-exporter-$RID.sha256"
+          ls -l
+
+      - name: Upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gpsd-exporter-${{ matrix.rid }}
+          path: dist/
+          if-no-files-found: error
+
+  smoke:
+    name: Smoke test ${{ matrix.rid }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      RID: ${{ matrix.rid }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (version from global.json)
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - name: Download the binary
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: gpsd-exporter-${{ matrix.rid }}
+          path: dist
+
+      - name: Verify the checksum
+        working-directory: dist
+        run: |
+          sha256sum --check --strict "gpsd-exporter-$RID.sha256"
+          chmod +x "gpsd-exporter-$RID"
+
+      # T11.1 (a clean debian:12 container with no .NET, via Testcontainers) and T11.2 (Go
+      # flags against FakeGpsd) run against this exact binary.
+      - name: Release smoke tests
+        env:
+          GPSD_EXPORTER_BINARY: ${{ github.workspace }}/dist/gpsd-exporter-${{ matrix.rid }}
+        run: >-
+          dotnet test --project tests/GpsdExporter.Tests.Release --configuration Release
+          --results-directory "$GITHUB_WORKSPACE/TestResults"
+          --report-xunit-trx
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-test-results-${{ matrix.rid }}
+          path: TestResults/
+          if-no-files-found: warn

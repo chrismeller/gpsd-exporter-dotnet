@@ -101,6 +101,11 @@ jobs:
             exit 1
           fi
 
+  # R11: Native AOT binaries for linux-x64 and linux-arm64, built and smoke-tested.
+  binaries:
+    name: Binaries
+    uses: ./.github/workflows/binaries.yml
+
   repository-checks:
     name: Repository checks
     runs-on: ubuntu-24.04
