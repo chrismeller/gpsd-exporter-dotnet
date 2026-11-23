@@ -31,4 +31,8 @@ updates:
         patterns:
           - "*"
 
-  # The container base image is added with the Dockerfile in EXT-902.
+  # AC12.4: the container image's base (pinned by digest in packaging/docker/Dockerfile).
+  - package-ecosystem: docker
+    directory: /packaging/docker
+    schedule:
+      interval: weekly
