@@ -16,16 +16,19 @@ using Microsoft.Extensions.Time.Testing;
 namespace GpsdExporter.Tests.Metrics.Exposition;
 
 /// <summary>
-/// The real host, in process, with the gpsd connection replaced by direct calls: lines are
+/// The real host, in process, with <c>/metrics</c> scraped over the test server and time on a
+/// <see cref="FakeTimeProvider"/>. Without a gpsd address there is no connection: lines are
 /// parsed and applied to the host's <see cref="StateStore"/> exactly as the connection manager
-/// would, and <c>/metrics</c> is scraped over the test server. Time is a <see cref="FakeTimeProvider"/>.
+/// would. With one (a FakeGpsd), the real connection manager runs against it.
 /// </summary>
 internal sealed class MetricsHost : IAsyncDisposable
 {
+    private static readonly TimeSpan RealTimeLimit = TimeSpan.FromSeconds(10);
+
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
 
-    public MetricsHost(MetricsOptions? metrics = null)
+    public MetricsHost(MetricsOptions? metrics = null, string? gpsdAddress = null)
     {
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(web => web
             .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning))
@@ -36,9 +39,16 @@ internal sealed class MetricsHost : IAsyncDisposable
             services.RemoveAll<MetricsOptions>();
             services.AddSingleton(metrics ?? new MetricsOptions());
 
-            // No gpsd connection: tests feed the state store directly.
-            var manager = services.Single(d => d.ImplementationType == typeof(GpsdConnectionManager));
-            services.Remove(manager);
+            if (gpsdAddress is null)
+            {
+                // No gpsd connection: tests feed the state store directly.
+                services.Remove(services.Single(d => d.ImplementationType == typeof(GpsdConnectionManager)));
+            }
+            else
+            {
+                services.RemoveAll<GpsdOptions>();
+                services.AddSingleton(new GpsdOptions { Address = gpsdAddress });
+            }
         }));
         _client = _factory.CreateClient();
     }
@@ -47,7 +57,67 @@ internal sealed class MetricsHost : IAsyncDisposable
 
     public StateStore Store => _factory.Services.GetRequiredService<StateStore>();
 
+    public ConnectionStats Stats => _factory.Services.GetRequiredService<ConnectionStats>();
+
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    /// <summary>Starts a host connected to <paramref name="gpsd"/> and waits until VERSION is processed.</summary>
+    public static async Task<(MetricsHost Host, FakeGpsdConnection Connection)> ConnectAsync(FakeGpsd gpsd)
+    {
+        ArgumentNullException.ThrowIfNull(gpsd);
+        var host = new MetricsHost(gpsdAddress: gpsd.Address);
+        try
+        {
+            var connection = await gpsd.AcceptAsync(Ct);
+            await WaitUntil(() => host.Stats.Up, "VERSION is processed");
+            return (host, connection);
+        }
+        catch
+        {
+            await host.DisposeAsync();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Sends the lines, then a WATCH object as a marker, and waits until the marker has been
+    /// processed, so every line before it has been too. The marker adds 1 to
+    /// <c>gpsd_exporter_messages_total{class="WATCH"}</c>.
+    /// </summary>
+    public async Task SendAndWaitAsync(FakeGpsdConnection connection, IEnumerable<byte[]> lines)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        ArgumentNullException.ThrowIfNull(lines);
+        // WATCH objects among the lines count too, so wait for all of them plus the marker.
+        var expected = Stats.Messages(GpsdClass.Watch) + 1;
+        foreach (var line in lines)
+        {
+            expected += line.AsSpan().IndexOf("\"class\":\"WATCH\""u8) >= 0 ? 1 : 0;
+            await connection.SendLineAsync(line, Ct);
+        }
+
+        await connection.SendLineAsync(WatchMarker, Ct);
+        await WaitUntil(() => Stats.Messages(GpsdClass.Watch) >= expected, "the lines are processed");
+    }
+
+    public Task SendAndWaitAsync(FakeGpsdConnection connection, IEnumerable<string> lines) =>
+        SendAndWaitAsync(connection, lines.Select(Encoding.UTF8.GetBytes));
+
+    public const string WatchMarker = """{"class":"WATCH","enable":true,"json":true}""";
+
+    public static async Task WaitUntil(Func<bool> condition, string because)
+    {
+        var deadline = DateTime.UtcNow + RealTimeLimit;
+        while (!condition())
+        {
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException($"Timed out waiting until {because}.");
+            }
+
+            await Task.Delay(5, Ct);
+        }
+    }
 
     /// <summary>Parses and applies each line; returns every parse result.</summary>
     public IReadOnlyList<ParseResult> Apply(params IEnumerable<string> lines)

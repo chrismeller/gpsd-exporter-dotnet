@@ -54,6 +54,9 @@ jobs:
 
       # T7.4 / AC7.4: promtool finds no problems in a full scrape. The archive is pinned by
       # version and checksum (the Prometheus 3.5 long-term support release).
+      # One lint finding is allowed: gpsd_device_bits_per_second is a serial line rate, which
+      # is defined in bits, so promtool's "use bytes" naming rule does not apply. Any other
+      # finding, or a parse error (exit 1), still fails the step.
       - name: Check the golden scrape with promtool
         env:
           PROMETHEUS_VERSION: "3.5.0"
@@ -66,7 +69,19 @@ jobs:
             "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/$name.tar.gz"
           echo "$PROMETHEUS_SHA256  $RUNNER_TEMP/$name.tar.gz" | sha256sum --check --strict -
           tar -xzf "$RUNNER_TEMP/$name.tar.gz" -C "$RUNNER_TEMP" "$name/promtool"
-          "$RUNNER_TEMP/$name/promtool" check metrics < "$SCRAPE"
+          allowed='gpsd_device_bits_per_second use base unit "bytes" instead of "bits"'
+          status=0
+          output=$("$RUNNER_TEMP/$name/promtool" check metrics < "$SCRAPE" 2>&1) || status=$?
+          printf '%s\n' "$output"
+          if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then
+            echo "::error::promtool failed with exit code $status."
+            exit 1
+          fi
+          remaining=$(printf '%s\n' "$output" | grep -vxF "$allowed" | grep -v '^[[:space:]]*$' || true)
+          if [ -n "$remaining" ]; then
+            echo "::error::promtool reported problems beyond the allowed bits_per_second finding."
+            exit 1
+          fi
 
       - name: Upload test results
         if: ${{ !cancelled() }}

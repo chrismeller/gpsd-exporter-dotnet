@@ -24,9 +24,10 @@ internal static class ServiceCollectionExtensions
 
         services.AddSingleton<ScrapeSnapshot>();
         services.AddSingleton<GpsdMetrics>();
+        services.AddSingleton<ExporterMetrics>();
         services.AddOpenTelemetry().WithMetrics(metrics =>
         {
-            metrics.AddMeter(GpsdMetrics.MeterName);
+            metrics.AddMeter(GpsdMetrics.MeterName, ExporterMetrics.MeterName);
             foreach (var satellite in GpsdMetrics.SatelliteMetrics)
             {
                 metrics.AddView(satellite.Name, new MetricStreamConfiguration { CardinalityLimit = MetricsOptions.SatelliteCardinalityLimit });
@@ -35,6 +36,7 @@ internal static class ServiceCollectionExtensions
             // Creating the instruments when the meter provider is built makes sure they exist
             // before the first scrape.
             metrics.AddInstrumentation(sp => sp.GetRequiredService<GpsdMetrics>());
+            metrics.AddInstrumentation(sp => sp.GetRequiredService<ExporterMetrics>());
             metrics.AddPrometheusExporter(prometheus =>
             {
                 // Exposed names are exactly the catalogue's (T7.3): no otel_scope_* labels, no
