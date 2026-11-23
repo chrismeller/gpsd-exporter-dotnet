@@ -1,0 +1,24 @@
+# Timing objects (sections TOFF, PPS and OSC).
+#   - TOFF and PPS with the man page example's values: a +2 ns offset (clock ahead).
+#     The PPS also has qErr.
+#   - PPS without qErr and with a negative offset (-1.5 ms: clock behind).
+#   - PPS across a second boundary (real B+2.999999999, clock B+3.000000000: +1 ns).
+#   - TOFF across a second boundary the other way (real B+3.000000001, clock B+2.999999999: -2 ns).
+#   - TOFF without precision.
+#   - OSC fully disciplined (delta 67 ns), then not referenced (delta -1250 ns).
+# B is 1795428000, 2026-11-23T10:00:00Z.
+# Used by T3.4, T3.5.
+# Lines starting with '#' are stripped by the test fixture loader before replay.
+# Objects, field names, types and value ranges follow gpsd_json(5) (gpsd man page,
+# man/gpsd_json.adoc at gpsd commit edd38e78a875). Values are synthetic.
+{"class":"VERSION","release":"3.22","rev":"3.22","proto_major":3,"proto_minor":14}
+{"class":"DEVICES","devices":[{"class":"DEVICE","path":"/dev/ttyACM0","driver":"u-blox","subtype":"SW EXT CORE 1.00 (3fda8e),HW 00190000","activated":"2026-11-23T09:59:58.000Z","flags":1,"native":1,"cycle":1.0,"mincycle":0.02}]}
+{"class":"WATCH","enable":true,"json":true,"nmea":false,"raw":0,"scaled":false,"timing":false,"split24":false,"pps":true}
+{"class":"TOFF","device":"/dev/ttyACM0","real_sec":1330212592,"real_nsec":343182,"clock_sec":1330212592,"clock_nsec":343184,"precision":-2}
+{"class":"PPS","device":"/dev/ttyACM0","real_sec":1330212592,"real_nsec":343182,"clock_sec":1330212592,"clock_nsec":343184,"precision":-3,"shm":"NTP2","qErr":-12345}
+{"class":"PPS","device":"/dev/ttyACM0","real_sec":1795428001,"real_nsec":0,"clock_sec":1795428000,"clock_nsec":998500000,"precision":-20,"shm":"NTP2"}
+{"class":"PPS","device":"/dev/ttyACM0","real_sec":1795428002,"real_nsec":999999999,"clock_sec":1795428003,"clock_nsec":0,"precision":-20,"shm":"NTP2","qErr":500}
+{"class":"TOFF","device":"/dev/ttyACM0","real_sec":1795428003,"real_nsec":1,"clock_sec":1795428002,"clock_nsec":999999999,"precision":-2}
+{"class":"TOFF","device":"/dev/ttyACM0","real_sec":1795428004,"real_nsec":0,"clock_sec":1795428004,"clock_nsec":250}
+{"class":"OSC","device":"/dev/ttyACM0","running":true,"reference":true,"disciplined":true,"delta":67}
+{"class":"OSC","device":"/dev/ttyACM0","running":true,"reference":false,"disciplined":false,"delta":-1250}

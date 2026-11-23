@@ -10,5 +10,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/GpsdExporter/GpsdExporter.csproj" />
+    <ProjectReference Include="../GpsdExporter.Testing/GpsdExporter.Testing.csproj" />
   </ItemGroup>
 </Project>

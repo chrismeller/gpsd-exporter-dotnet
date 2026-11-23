@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>GpsdExporter.Testing</RootNamespace>
+  </PropertyGroup>
+</Project>
