@@ -21,6 +21,8 @@ namespace GpsdExporter.Protocol;
 /// without <c>mode</c>, a PPS or TOFF without its time fields, and a satellite without
 /// <c>PRN</c> are skipped as <see cref="ParseErrorReason.MissingField"/> (AC2.4); a required
 /// field that is present but unusable skips the object as <see cref="ParseErrorReason.BadField"/>.
+/// Two satellites with the same <see cref="SatelliteId"/> in one SKY keep the last and report
+/// <see cref="ParseErrorReason.DuplicateSatellite"/> (AC6.5).
 /// </para>
 /// <para>The parser reports; it does not log or count.</para>
 /// </remarks>
@@ -177,12 +179,26 @@ internal static class GpsdParser
             else
             {
                 satellites = [];
+                Dictionary<SatelliteId, int>? positions = null;
                 var index = 0;
                 foreach (var element in array.EnumerateArray())
                 {
                     if (ParseSatellite(element, $"satellites[{index}]", reader) is { } satellite)
                     {
-                        satellites.Add(satellite);
+                        // AC6.5: the last satellite with an identity wins, in the earlier one's place,
+                        // so the array never yields two series with the same labels.
+                        positions ??= [];
+                        var id = SatelliteId.Of(satellite);
+                        if (positions.TryGetValue(id, out var earlier))
+                        {
+                            reader.FieldError(ParseErrorReason.DuplicateSatellite, $"satellites[{index}]");
+                            satellites[earlier] = satellite;
+                        }
+                        else
+                        {
+                            positions.Add(id, satellites.Count);
+                            satellites.Add(satellite);
+                        }
                     }
 
                     index++;

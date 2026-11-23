@@ -490,8 +490,46 @@ public sealed class GpsdParserTests
                 var result = GpsdParser.Parse(line);
 
                 result.Error.ShouldBeNull($"{fixture}: {Encoding.UTF8.GetString(line)}");
-                result.FieldErrors.ShouldBeEmpty($"{fixture}: {Encoding.UTF8.GetString(line)}");
+                if (fixture == "session-multi-gnss.jsonl" && result.Class == GpsdClass.Sky)
+                {
+                    // The fixture ends its array with a duplicate on purpose (T6.4).
+                    result.FieldErrors.ShouldBe([new FieldError(ParseErrorReason.DuplicateSatellite, "satellites[15]")]);
+                }
+                else
+                {
+                    result.FieldErrors.ShouldBeEmpty($"{fixture}: {Encoding.UTF8.GetString(line)}");
+                }
             }
         }
+    }
+
+    [Fact]
+    public void T6_4_a_duplicate_satellite_identity_keeps_the_last_in_the_first_ones_place()
+    {
+        var result = Parse("""{"class":"SKY","satellites":[{"PRN":8,"gnssid":0,"svid":8,"sigid":0,"ss":44},{"PRN":3,"gnssid":0,"svid":3,"sigid":0},{"PRN":8,"gnssid":0,"svid":8,"sigid":0,"ss":45}]}""");
+
+        var sky = Accepted<SkyReport>(result);
+        result.FieldErrors.ShouldBe([new FieldError(ParseErrorReason.DuplicateSatellite, "satellites[2]")]);
+        sky.Satellites!.Select(s => (s.SvId, s.Fields[SatelliteField.Ss])).ShouldBe([(8, 45d), (3, (double?)null)]);
+    }
+
+    [Fact]
+    public void T6_4_prn_only_satellites_are_duplicates_by_prn()
+    {
+        var result = Parse("""{"class":"SKY","satellites":[{"PRN":17,"ss":1},{"PRN":17,"ss":2},{"PRN":18}]}""");
+
+        var sky = Accepted<SkyReport>(result);
+        result.FieldErrors.ShouldBe([new FieldError(ParseErrorReason.DuplicateSatellite, "satellites[1]")]);
+        sky.Satellites!.Select(s => s.Prn).ShouldBe([17, 18]);
+        sky.Satellites![0].Fields[SatelliteField.Ss].ShouldBe(2);
+    }
+
+    [Fact]
+    public void T6_2_the_same_satellite_on_two_signals_is_not_a_duplicate()
+    {
+        var result = Parse("""{"class":"SKY","satellites":[{"PRN":3,"gnssid":0,"svid":3,"sigid":0},{"PRN":3,"gnssid":0,"svid":3,"sigid":6}]}""");
+
+        Accepted<SkyReport>(result).Satellites!.Count.ShouldBe(2);
+        result.FieldErrors.ShouldBeEmpty();
     }
 }
