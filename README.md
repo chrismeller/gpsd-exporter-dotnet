@@ -372,7 +372,8 @@ release workflow builds both binaries with that version, checks that `--version`
 `gpsd-exporter.service` and `gpsd-exporter.env` to the release.
 
 Dependencies are kept current by [Renovate](https://docs.renovatebot.com/) (`renovate.json5`). It merges
-each update by itself once every check on its pull request has passed, and leaves it open otherwise.
+each update by itself once every check on its pull request has passed, and leaves it open otherwise. Major
+upgrades are not opened until they are approved on the Dependency Dashboard issue.
 Updates to what ships (the OpenTelemetry packages, the .NET SDK and the image's base) are `fix(deps):`, so
 they lead to a patch release; test and CI updates are `chore(deps):` and do not.
 

@@ -89,22 +89,11 @@
       pinDigests: false,
     },
     {
-      // Moving to a new .NET major (SDK, runtime-deps base image, ASP.NET Core test host) is a
-      // deliberate change across global.json, the target framework and the Dockerfile together,
-      // so Renovate does not propose those majors one by one. Minor and patch updates still apply.
-      description: 'Leave .NET major upgrades to a planned change.',
-      matchPackageNames: ['dotnet-sdk', 'mcr.microsoft.com/dotnet/runtime-deps', 'Microsoft.AspNetCore.Mvc.Testing'],
+      // Major upgrades wait for approval on the Dependency Dashboard issue; tick one there and
+      // Renovate opens its pull request, which then merges like any other once its checks pass.
+      description: 'Major upgrades need approval on the Dependency Dashboard.',
       matchUpdateTypes: ['major'],
-      enabled: false,
-    },
-    {
-      // AC11.7: the binaries are built in debian:12 so they need nothing newer than glibc 2.36
-      // and run on Debian 12 and Raspberry Pi OS bookworm. Digest updates of 12 still apply.
-      description: 'Keep the binary build container and its test on Debian 12.',
-      matchDatasources: ['docker'],
-      matchPackageNames: ['debian'],
-      matchUpdateTypes: ['major'],
-      enabled: false,
+      dependencyDashboardApproval: true,
     },
   ],
 }
