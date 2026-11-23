@@ -1,3 +1,4 @@
+using GpsdExporter.Configuration;
 using GpsdExporter.Connection;
 using GpsdExporter.Metrics;
 using GpsdExporter.State;
@@ -9,15 +10,17 @@ internal static class ServiceCollectionExtensions
 {
     /// <summary>
     /// The gpsd side of the exporter: state, connection stats, the connection manager and the
-    /// gpsd instruments on <c>/metrics</c>. Options use the spec defaults until configuration
-    /// binding is added.
+    /// instruments on <c>/metrics</c>, configured from validated <paramref name="settings"/>.
     /// </summary>
-    public static IServiceCollection AddGpsdExporter(this IServiceCollection services)
+    public static IServiceCollection AddGpsdExporter(this IServiceCollection services, ExporterSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+        services.AddSingleton(settings);
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton(new GpsdOptions());
-        services.AddSingleton(new StalenessOptions());
-        services.AddSingleton(new MetricsOptions());
+        services.AddSingleton(settings.Gpsd);
+        services.AddSingleton(settings.Staleness);
+        services.AddSingleton(settings.Metrics);
+        services.AddSingleton(settings.Http);
         services.AddSingleton(sp => new StateStore(sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<StalenessOptions>()));
         services.AddSingleton<ConnectionStats>();
         services.AddHostedService<GpsdConnectionManager>();

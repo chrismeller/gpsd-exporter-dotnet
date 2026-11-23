@@ -18,25 +18,25 @@ internal sealed record GpsdOptions
     public const int MaxCommandLength = 80;
 
     /// <summary><c>host:port</c>; an IPv6 address goes in brackets. The port defaults to 2947.</summary>
-    public string Address { get; init; } = "localhost:2947";
+    public string Address { get; set; } = "localhost:2947";
 
     /// <summary>Watch only this device. Null watches every device.</summary>
-    public string? Device { get; init; }
+    public string? Device { get; set; }
 
     /// <summary>Ask gpsd for PPS and TOFF objects.</summary>
-    public bool Pps { get; init; } = true;
+    public bool Pps { get; set; } = true;
 
-    public TimeSpan ConnectTimeout { get; init; } = TimeSpan.FromSeconds(5);
+    public TimeSpan ConnectTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
-    public TimeSpan ReconnectInitialDelay { get; init; } = TimeSpan.FromSeconds(1);
+    public TimeSpan ReconnectInitialDelay { get; set; } = TimeSpan.FromSeconds(1);
 
-    public TimeSpan ReconnectMaxDelay { get; init; } = TimeSpan.FromSeconds(30);
+    public TimeSpan ReconnectMaxDelay { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>Silence before <c>?VERSION;</c> is sent (AC1.4).</summary>
-    public TimeSpan KeepaliveIdle { get; init; } = TimeSpan.FromSeconds(15);
+    public TimeSpan KeepaliveIdle { get; set; } = TimeSpan.FromSeconds(15);
 
     /// <summary>How long to wait for any bytes after the keepalive probe (AC1.4).</summary>
-    public TimeSpan KeepaliveTimeout { get; init; } = TimeSpan.FromSeconds(5);
+    public TimeSpan KeepaliveTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
     /// <summary>
     /// The one command sent after connecting (AC1.3), without its line terminator:
