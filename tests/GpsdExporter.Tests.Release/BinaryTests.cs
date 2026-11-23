@@ -28,7 +28,7 @@ public sealed class BinaryTests
     [Fact]
     public async Task It_starts_quickly_with_the_root_directory_as_its_working_directory()
     {
-        var port = FreePort();
+        var port = Scraping.FreePort();
         using var process = PublishedBinary.StartIn("/", "-l", $"127.0.0.1:{port}");
         var output = new OutputCollector(process);
         try
