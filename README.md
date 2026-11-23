@@ -118,6 +118,7 @@ workflow) with a test version. It does everything except publish, and leaves the
 | `tests/GpsdExporter.Tests.Integration` | The exporter against FakeGpsd, a scripted in-process TCP server. |
 | `tests/GpsdExporter.Tests.Release` | Smoke tests for the published binary and image. Skipped unless `GPSD_EXPORTER_BINARY` is set. |
 | `tests/GpsdExporter.Testing` | Shared test helpers: the fixture loader, FakeGpsd, and the Prometheus text parser and snapshot normalizer. |
+| `grafana-dashboard.json` | The Grafana dashboard: fix, position, satellites, DOP, PPS and TOFF, and exporter health. |
 | `packaging/systemd` | The systemd unit and its example settings file. |
 | `packaging/docker` | The container image's Dockerfile. |
 | `scripts` | CI helpers: the glibc version check, the systemd unit check, the image build context and the release version check. |
