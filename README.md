@@ -91,6 +91,23 @@ Exposition tests use [Verify](https://github.com/VerifyTests/Verify) for snapsho
 next to it (ignored by git). Verify's licence check is satisfied by its OpenSource exemption in
 `Directory.Build.props`, which must be renewed before `Verify_SponsorshipExemptionUntil`.
 
+## Releasing
+
+Push a tag `vX.Y.Z` from the commit to release. The release workflow builds both binaries with that
+version, checks that `--version` and `gpsd_exporter_build_info` report it, and tests the image on both
+architectures. Only then does it push `ghcr.io/chrismeller/gpsd-exporter-dotnet:X.Y.Z` and `:latest` and
+create the GitHub release with the binaries, their checksums, `gpsd-exporter.service` and
+`gpsd-exporter.env`.
+
+```sh
+git tag -a v1.0.0 -m "gpsd-exporter 1.0.0"
+git push origin v1.0.0
+```
+
+To try a release without publishing anything, run the Release workflow by hand (Actions, Release, Run
+workflow) with a test version. It does everything except publish, and leaves the release files as the
+`release-files` artifact. It also runs this way on any pull request that changes the workflow.
+
 ## Layout
 
 | Path | Contents |
@@ -103,7 +120,7 @@ next to it (ignored by git). Verify's licence check is satisfied by its OpenSour
 | `tests/GpsdExporter.Testing` | Shared test helpers: the fixture loader, FakeGpsd, and the Prometheus text parser and snapshot normalizer. |
 | `packaging/systemd` | The systemd unit and its example settings file. |
 | `packaging/docker` | The container image's Dockerfile. |
-| `scripts` | CI helpers: the glibc version check, the systemd unit check and the image build context. |
+| `scripts` | CI helpers: the glibc version check, the systemd unit check, the image build context and the release version check. |
 | `tests/fixtures` | gpsd sessions as `.jsonl`, built from `gpsd_json(5)` and gpsd's regression logs. See its README. |
 
 ## Licence
