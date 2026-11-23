@@ -2,4 +2,9 @@
   <PropertyGroup>
     <RootNamespace>GpsdExporter.Testing</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ListLogger implements ILogger. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 </Project>

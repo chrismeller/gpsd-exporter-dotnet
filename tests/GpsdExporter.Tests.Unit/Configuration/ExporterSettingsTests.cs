@@ -24,6 +24,9 @@ public sealed class ExporterSettingsTests
         settings.Staleness.Tpv.ShouldBe(TimeSpan.FromSeconds(10));
         settings.Staleness.Sky.ShouldBe(TimeSpan.FromSeconds(30));
         settings.Metrics.Satellites.ShouldBeTrue();
+        settings.Metrics.Runtime.ShouldBeFalse();
+        settings.Otlp.Endpoint.ShouldBeNull();
+        settings.Otlp.Enabled.ShouldBeFalse();
         settings.Http.Listen.ShouldBe(":9978");
         settings.Http.MetricsPath.ShouldBe("/metrics");
         settings.LogFormat.ShouldBe(LogFormat.Text);
@@ -48,6 +51,8 @@ public sealed class ExporterSettingsTests
             ["Staleness:Toff"] = "00:00:13",
             ["Staleness:Osc"] = "00:00:32",
             ["Metrics:Satellites"] = "false",
+            ["Metrics:Runtime"] = "true",
+            ["Otlp:Endpoint"] = "http://collector:4317",
             ["Http:Listen"] = "127.0.0.1:9100",
             ["Http:MetricsPath"] = "/gps/metrics",
             ["Logging:Format"] = "JSON",
@@ -73,6 +78,8 @@ public sealed class ExporterSettingsTests
             Osc = TimeSpan.FromSeconds(32),
         });
         settings.Metrics.Satellites.ShouldBeFalse();
+        settings.Metrics.Runtime.ShouldBeTrue();
+        settings.Otlp.Endpoint.ShouldBe("http://collector:4317");
         settings.Http.ShouldBe(new HttpOptions { Listen = "127.0.0.1:9100", MetricsPath = "/gps/metrics" });
         settings.LogFormat.ShouldBe(LogFormat.Json);
     }
@@ -100,6 +107,40 @@ public sealed class ExporterSettingsTests
 
         settings.ShouldBeNull();
         errors.ShouldContain(e => e.Contains(message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Runtime_and_Otlp_bind()
+    {
+        var settings = Load(new() { ["Metrics:Runtime"] = "true", ["Otlp:Endpoint"] = "http://collector:4317" });
+
+        settings.Metrics.Runtime.ShouldBeTrue();
+        settings.Otlp.Endpoint.ShouldBe("http://collector:4317");
+        settings.Otlp.Enabled.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("OTEL_EXPORTER_OTLP_ENDPOINT")]
+    [InlineData("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT")]
+    [InlineData("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")]
+    public void A_standard_OTLP_endpoint_variable_turns_OTLP_on(string key)
+    {
+        var settings = Load(new() { [key] = "http://collector:4318" });
+
+        settings.Otlp.Endpoint.ShouldBeNull();
+        settings.Otlp.Enabled.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("collector:4317")]
+    [InlineData("grpc://collector:4317")]
+    [InlineData("/v1/metrics")]
+    public void An_Otlp_endpoint_must_be_an_http_url(string endpoint)
+    {
+        var (settings, errors) = ExporterSettings.Load(Build(new() { ["Otlp:Endpoint"] = endpoint }));
+
+        settings.ShouldBeNull();
+        errors.ShouldHaveSingleItem().ShouldBe($"Otlp:Endpoint '{endpoint}' must be an absolute http or https URL.");
     }
 
     [Fact]

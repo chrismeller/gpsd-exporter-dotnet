@@ -2,6 +2,7 @@ using GpsdExporter.Configuration;
 using GpsdExporter.Connection;
 using GpsdExporter.Metrics;
 using GpsdExporter.State;
+using GpsdExporter.Telemetry;
 using OpenTelemetry.Metrics;
 
 namespace GpsdExporter;
@@ -40,6 +41,11 @@ internal static class ServiceCollectionExtensions
             // before the first scrape.
             metrics.AddInstrumentation(sp => sp.GetRequiredService<GpsdMetrics>());
             metrics.AddInstrumentation(sp => sp.GetRequiredService<ExporterMetrics>());
+            if (settings.Metrics.Runtime)
+            {
+                metrics.AddRuntimeInstrumentation().AddProcessInstrumentation();
+            }
+
             metrics.AddPrometheusExporter(prometheus =>
             {
                 // Exposed names are exactly the catalogue's (T7.3): no otel_scope_* labels, no
@@ -49,6 +55,7 @@ internal static class ServiceCollectionExtensions
                 prometheus.ScrapeResponseCacheDurationMilliseconds = 0;
             });
         });
+        services.AddOwnTelemetry(settings.Otlp);
         return services;
     }
 }

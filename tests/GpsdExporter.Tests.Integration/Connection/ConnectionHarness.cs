@@ -1,5 +1,6 @@
 using GpsdExporter.Connection;
 using GpsdExporter.State;
+using GpsdExporter.Testing.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 namespace GpsdExporter.Tests.Integration.Connection;

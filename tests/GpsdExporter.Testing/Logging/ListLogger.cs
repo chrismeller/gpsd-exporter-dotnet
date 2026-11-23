@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Logging;
 
-namespace GpsdExporter.Tests.Integration.Connection;
+namespace GpsdExporter.Testing.Logging;
 
 /// <summary>Records log entries so tests can assert on them.</summary>
-internal sealed class ListLogger<T> : ILogger<T>
+public sealed class ListLogger<T> : ILogger<T>
 {
     private readonly Lock _gate = new();
-    private readonly List<(LogLevel Level, string Message)> _entries = [];
+    private readonly List<LogEntry> _entries = [];
 
-    public IReadOnlyList<(LogLevel Level, string Message)> Entries
+    public IReadOnlyList<LogEntry> Entries
     {
         get
         {
@@ -29,7 +29,10 @@ internal sealed class ListLogger<T> : ILogger<T>
         ArgumentNullException.ThrowIfNull(formatter);
         lock (_gate)
         {
-            _entries.Add((logLevel, formatter(state, exception)));
+            _entries.Add(new LogEntry(logLevel, eventId, formatter(state, exception), exception));
         }
     }
 }
+
+/// <summary>One recorded log entry.</summary>
+public sealed record LogEntry(LogLevel Level, EventId EventId, string Message, Exception? Exception);

@@ -3,6 +3,7 @@ using System.Text;
 using GpsdExporter.Connection;
 using GpsdExporter.Protocol;
 using GpsdExporter.Testing;
+using GpsdExporter.Testing.Logging;
 using Microsoft.Extensions.Logging;
 
 namespace GpsdExporter.Tests.Integration.Connection;
@@ -122,6 +123,50 @@ public sealed class GpsdConnectionManagerTests
         harness.Stats.ParseErrors(ParseErrorReason.BadField).ShouldBe(1);
         harness.Stats.LastMessageAt.ShouldNotBeNull();
         harness.Logger.Entries.ShouldContain(e => e.Level == LogLevel.Information && e.Message.Contains("Device added: /dev/ttyACM0", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AC5_5_connection_events_are_logged_at_Information()
+    {
+        await using var gpsd = FakeGpsd.CreateStarted();
+        await using var harness = new ConnectionHarness(gpsd.Address);
+        var connection = await ConnectedAsync(gpsd, harness);
+        await connection.SendLineAsync(Tpv, Ct);
+        await ConnectionHarness.WaitUntil(() => !harness.Store.Current.Devices.IsEmpty, "the TPV is applied");
+
+        await connection.CloseAsync();
+        await ConnectionHarness.WaitUntil(() => harness.Stats.ReconnectDelay > TimeSpan.Zero, "the reconnect is scheduled");
+
+        var info = harness.Logger.Entries.Where(e => e.Level == LogLevel.Information).Select(e => e.Message).ToList();
+        info.ShouldContain($"Connected to gpsd at {gpsd.Address}");
+        info.ShouldContain(m => m.StartsWith("gpsd VERSION received: release ", StringComparison.Ordinal));
+        info.ShouldContain("Device added: /dev/ttyACM0");
+        info.ShouldContain(m => m.StartsWith("Disconnected from gpsd: ", StringComparison.Ordinal));
+        info.ShouldContain(m => m.StartsWith($"Reconnecting to gpsd at {gpsd.Address} in ", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task AC2_7_bad_lines_are_logged_at_Debug_and_summarised_at_Warning()
+    {
+        await using var gpsd = FakeGpsd.CreateStarted();
+        await using var harness = new ConnectionHarness(gpsd.Address);
+        var connection = await ConnectedAsync(gpsd, harness);
+
+        await connection.SendLinesAsync(["not json", "[1,2]", """{"class":"TPV","device":"/dev/ttyACM0","mode":3,"lat":"x"}"""], Ct);
+        await ConnectionHarness.WaitUntil(() => harness.Stats.ParseErrors(ParseErrorReason.BadField) == 1, "every line is processed");
+
+        var entries = harness.Logger.Entries;
+        entries.ShouldContain(e => e.Level == LogLevel.Debug && e.Message == "Discarded a gpsd line (invalid_json): not json");
+        entries.ShouldContain(e => e.Level == LogLevel.Debug && e.Message == "Discarded a gpsd line (not_object): [1,2]");
+        entries.ShouldContain(e => e.Level == LogLevel.Debug && e.Message.StartsWith("Discarded a gpsd line (bad_field): {\"class\":\"TPV\"", StringComparison.Ordinal));
+
+        // The first is summarised at once; the other two wait for the end of the minute.
+        entries.Count(e => e.Level == LogLevel.Warning).ShouldBe(1);
+        harness.Time.Advance(TimeSpan.FromMinutes(1));
+        var summaries = harness.Logger.Entries.Where(e => e.Level == LogLevel.Warning).ToList();
+        summaries.Count.ShouldBe(2);
+        summaries[1].Message.ShouldStartWith("2 bad gpsd lines since ");
+        summaries[1].Message.ShouldContain("not_object=1, bad_field=1");
     }
 
     [Fact]

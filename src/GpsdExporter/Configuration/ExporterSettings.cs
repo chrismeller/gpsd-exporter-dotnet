@@ -16,6 +16,7 @@ internal sealed record ExporterSettings(
     StalenessOptions Staleness,
     MetricsOptions Metrics,
     HttpOptions Http,
+    OtlpOptions Otlp,
     LogFormat LogFormat)
 {
     /// <summary>The prefix of the exporter's environment variables, e.g. <c>GPSD_EXPORTER_GPSD__ADDRESS</c>.</summary>
@@ -23,7 +24,7 @@ internal sealed record ExporterSettings(
 
     public const string LogFormatKey = "Logging:Format";
 
-    public static ExporterSettings Default { get; } = new(new GpsdOptions(), new StalenessOptions(), new MetricsOptions(), new HttpOptions(), LogFormat.Text);
+    public static ExporterSettings Default { get; } = new(new GpsdOptions(), new StalenessOptions(), new MetricsOptions(), new HttpOptions(), new OtlpOptions(), LogFormat.Text);
 
     /// <summary>Binds and validates. Returns the settings, or every problem found.</summary>
     public static (ExporterSettings? Settings, IReadOnlyList<string> Errors) Load(IConfiguration configuration)
@@ -35,10 +36,15 @@ internal sealed record ExporterSettings(
         var staleness = Bind(configuration, StalenessOptions.Section, static s => s.Get<StalenessOptions>(Strict), errors) ?? new StalenessOptions();
         var metrics = Bind(configuration, MetricsOptions.Section, static s => s.Get<MetricsOptions>(Strict), errors) ?? new MetricsOptions();
         var http = Bind(configuration, HttpOptions.Section, static s => s.Get<HttpOptions>(Strict), errors) ?? new HttpOptions();
+        var otlp = (Bind(configuration, OtlpOptions.Section, static s => s.Get<OtlpOptions>(Strict), errors) ?? new OtlpOptions()) with
+        {
+            StandardEndpoint = OtlpOptions.StandardEndpointKeys.Any(k => !string.IsNullOrEmpty(configuration[k])),
+        };
 
         errors.AddRange(gpsd.Validate());
         errors.AddRange(staleness.Validate());
         errors.AddRange(http.Validate());
+        errors.AddRange(otlp.Validate());
 
         var formatText = configuration[LogFormatKey];
         var format = formatText?.ToUpperInvariant() switch
@@ -53,7 +59,7 @@ internal sealed record ExporterSettings(
         }
 
         return errors.Count == 0
-            ? (new ExporterSettings(gpsd, staleness, metrics, http, format!.Value), errors)
+            ? (new ExporterSettings(gpsd, staleness, metrics, http, otlp, format!.Value), errors)
             : (null, errors);
     }
 
