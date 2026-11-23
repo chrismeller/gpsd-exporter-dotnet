@@ -32,7 +32,7 @@ dotnet publish src/GpsdExporter -r linux-x64 -c Release
 | `tests/GpsdExporter.Tests.Metrics` | Exposition tests: the host in-process, `/metrics` scraped and parsed. |
 | `tests/GpsdExporter.Tests.Integration` | The exporter against FakeGpsd, a scripted in-process TCP server. |
 | `tests/GpsdExporter.Tests.Release` | Smoke tests for the published binary and image. Skipped unless `GPSD_EXPORTER_BINARY` is set. |
-| `tests/GpsdExporter.Testing` | Shared test helpers, such as the fixture loader. |
+| `tests/GpsdExporter.Testing` | Shared test helpers: the fixture loader and FakeGpsd. |
 | `tests/fixtures` | gpsd sessions as `.jsonl`, built from `gpsd_json(5)` and gpsd's regression logs. See its README. |
 
 ## Licence
