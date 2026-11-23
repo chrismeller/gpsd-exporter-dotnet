@@ -66,29 +66,38 @@ public sealed class PrometheusSnapshotTests
     }
 
     [Theory]
-    [InlineData("gpsd_up 1", "gpsd_up 0")]
-    [InlineData("gpsd_tpv_latitude_degrees{device=\"/dev/ttyACM0\"}", "gpsd_tpv_lat_degrees{device=\"/dev/ttyACM0\"}")]
-    [InlineData("gpsd_exporter_messages_total{class=\"SKY\"} 7", "gpsd_exporter_messages_total{kind=\"SKY\"} 7")]
-    [InlineData("# TYPE gpsd_up gauge", "# TYPE gpsd_up counter")]
-    public async Task A_changed_value_name_label_or_type_fails_the_snapshot(string original, string changed)
+    [InlineData(1, "gpsd_up 1", "gpsd_up 0")]
+    [InlineData(2, "gpsd_tpv_latitude_degrees{device=\"/dev/ttyACM0\"}", "gpsd_tpv_lat_degrees{device=\"/dev/ttyACM0\"}")]
+    [InlineData(3, "gpsd_exporter_messages_total{class=\"SKY\"} 7", "gpsd_exporter_messages_total{kind=\"SKY\"} 7")]
+    [InlineData(4, "# TYPE gpsd_up gauge", "# TYPE gpsd_up counter")]
+    public async Task A_changed_value_name_label_or_type_fails_the_snapshot(int probe, string original, string changed)
     {
         SampleExposition.Text.ShouldContain(original);
-        var settings = new VerifySettings();
-        settings.UseMethodName(nameof(Sample_scrape_matches_the_approved_snapshot));
-        settings.DisableDiff();
 
+        // Verify each change against a private copy of the approved snapshot, so this test
+        // neither shares a file name with the real snapshot test nor leaves files behind.
+        var snapshots = Path.Combine(AttributeReader.GetProjectDirectory(), "Snapshots");
+        var name = $"{nameof(PrometheusSnapshotTests)}.MismatchProbe{probe}";
+        var approved = Path.Combine(snapshots, $"{nameof(PrometheusSnapshotTests)}.{nameof(Sample_scrape_matches_the_approved_snapshot)}.verified.txt");
+        var probeVerified = Path.Combine(snapshots, name + ".verified.txt");
+        var probeReceived = Path.Combine(snapshots, name + ".received.txt");
+        File.Copy(approved, probeVerified, overwrite: true);
+
+        var settings = new VerifySettings();
+        settings.UseFileName(name);
+        settings.DisableDiff();
         var changedText = PrometheusSnapshot.Normalize(SampleExposition.Text.Replace(original, changed, StringComparison.Ordinal));
 
         try
         {
-            await Should.ThrowAsync<VerifyException>(() => Verify(changedText, settings));
+            // VerifyException is internal to Verify, so match it by name.
+            var ex = await Should.ThrowAsync<Exception>(() => Verify(changedText, settings));
+            ex.GetType().Name.ShouldBe("VerifyException");
         }
         finally
         {
-            // Verify writes a .received file next to the snapshot on a mismatch; this one is expected.
-            var received = Path.Combine(AttributeReader.GetProjectDirectory(), "Snapshots",
-                $"{nameof(PrometheusSnapshotTests)}.{nameof(Sample_scrape_matches_the_approved_snapshot)}.received.txt");
-            File.Delete(received);
+            File.Delete(probeVerified);
+            File.Delete(probeReceived);
         }
     }
 }

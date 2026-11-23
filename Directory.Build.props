@@ -26,6 +26,12 @@
     <RepositoryUrl>https://github.com/chrismeller/gpsd-exporter-dotnet</RepositoryUrl>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 
+    <!-- Verify (snapshot tests) requires a SponsorCheck declaration. This project is open
+         source with no revenue, so it claims Verify's OpenSource exemption (decided by Chris,
+         2026-11-23). The exemption is time-bounded: renew it before it lapses. -->
+    <Verify_SponsorshipExemption>OpenSource</Verify_SponsorshipExemption>
+    <Verify_SponsorshipExemptionUntil>2027-11</Verify_SponsorshipExemptionUntil>
+
     <!-- The release workflow overrides this from the vX.Y.Z tag (AC12.2). -->
     <Version>0.0.0-dev</Version>
   </PropertyGroup>
