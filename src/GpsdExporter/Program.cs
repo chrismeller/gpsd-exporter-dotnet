@@ -25,7 +25,13 @@ if (commandLine.Errors.Count > 0)
     return Fail(commandLine.Errors, showUsage: true);
 }
 
-var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [.. commandLine.HostArgs] });
+// appsettings.json is read once and not watched. Watching it puts an inotify watch on every
+// directory under the content root, which is the working directory: under systemd that is /,
+// and startup then takes from seconds to minutes before the HTTP port is open.
+var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
+{
+    Args = [.. commandLine.HostArgs, "--hostBuilder:reloadConfigOnChange=false"],
+});
 builder.Configuration.AddExporterSources(commandLine.ConfigArgs);
 
 var (settings, errors) = ExporterSettings.Load(builder.Configuration);
