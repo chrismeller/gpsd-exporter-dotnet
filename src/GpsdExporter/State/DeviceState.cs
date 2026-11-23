@@ -19,6 +19,21 @@ internal sealed record DeviceState(string Path)
     /// <summary>Null until the device's first SKY (AC3.4).</summary>
     public SkyState? Sky { get; init; }
 
+    /// <summary>The latest PPS; null until the device's first.</summary>
+    public TimeOffsetState? Pps { get; init; }
+
+    /// <summary>The latest TOFF; null until the device's first.</summary>
+    public TimeOffsetState? Toff { get; init; }
+
+    /// <summary>The latest OSC; null until the device's first.</summary>
+    public OscState? Osc { get; init; }
+
+    /// <summary>
+    /// PPS objects received from this device on this connection (<c>gpsd_pps_pulses_total</c>).
+    /// Starts again from 0 when the device is removed or the connection is reset.
+    /// </summary>
+    public long PpsPulses { get; init; }
+
     /// <summary>When each class was last received from this device (<c>gpsd_device_last_report_timestamp_seconds</c>).</summary>
     public ImmutableSortedDictionary<GpsdClass, DateTimeOffset> LastReport { get; init; } =
         ImmutableSortedDictionary<GpsdClass, DateTimeOffset>.Empty;

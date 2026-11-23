@@ -99,8 +99,13 @@ internal sealed class StateStore(TimeProvider timeProvider)
         {
             TpvReport tpv => Update(resolved, GpsdClass.Tpv, now, d => d with { Tpv = TpvState.Apply(d.Tpv, tpv, now) }),
             SkyReport sky => Update(resolved, GpsdClass.Sky, now, d => d with { Sky = SkyState.Apply(d.Sky, sky, now) }),
-            TimeOffsetReport t => Update(resolved, t.Kind, now, d => d),
-            OscReport => Update(resolved, GpsdClass.Osc, now, d => d),
+            TimeOffsetReport { Kind: GpsdClass.Pps } pps => Update(resolved, GpsdClass.Pps, now, d => d with
+            {
+                Pps = new TimeOffsetState(pps, now),
+                PpsPulses = d.PpsPulses + 1,
+            }),
+            TimeOffsetReport toff => Update(resolved, GpsdClass.Toff, now, d => d with { Toff = new TimeOffsetState(toff, now) }),
+            OscReport osc => Update(resolved, GpsdClass.Osc, now, d => d with { Osc = new OscState(osc, now) }),
             _ => null,
         };
     }
