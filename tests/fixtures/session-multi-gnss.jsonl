@@ -1,0 +1,17 @@
+# Satellite identity (section "PRN, GNSS id, SV id, and SIG id").
+# One SKY whose satellites cover every gnssid in the gnssid table (0 GPS, 1 SBAS, 2 Galileo,
+# 3 BeiDou, 4 IMES, 5 QZSS, 6 GLONASS, 7 NavIC), plus:
+#   - GPS svid 3 on sigid 0 (L1C/A) and sigid 6 (L5 I), GPS svid 8 on sigid 0 and sigid 7 (L5 Q);
+#   - Galileo and BeiDou on two signals each;
+#   - two PRN-only satellites (no gnssid/svid/sigid), one with ss 0;
+#   - a duplicate of GPS svid 8 sigid 0 as the last satellite (last one wins, counted
+#     duplicate_satellite).
+# nSat counts every array entry, including the duplicate.
+# Used by T6.2, T6.3, T6.4.
+# Lines starting with '#' are stripped by the test fixture loader before replay.
+# Objects, field names, types and value ranges follow gpsd_json(5) (gpsd man page,
+# man/gpsd_json.adoc at gpsd commit edd38e78a875). Values are synthetic.
+{"class":"VERSION","release":"3.22","rev":"3.22","proto_major":3,"proto_minor":14}
+{"class":"DEVICES","devices":[{"class":"DEVICE","path":"/dev/ttyACM0","driver":"u-blox","subtype":"SW EXT CORE 1.00 (3fda8e),HW 00190000","activated":"2026-11-23T09:59:58.000Z","flags":1,"native":1,"cycle":1.0,"mincycle":0.02}]}
+{"class":"WATCH","enable":true,"json":true,"nmea":false,"raw":0,"scaled":false,"timing":false,"split24":false,"pps":true}
+{"class":"SKY","device":"/dev/ttyACM0","time":"2026-11-23T10:00:00.000Z","hdop":0.7,"pdop":1.2,"nSat":16,"uSat":11,"satellites":[{"PRN":3,"gnssid":0,"svid":3,"sigid":0,"az":163.0,"el":52.0,"health":1,"ss":41.0,"used":true},{"PRN":3,"gnssid":0,"svid":3,"sigid":6,"az":163.0,"el":52.0,"health":1,"ss":47.0,"used":true},{"PRN":8,"gnssid":0,"svid":8,"sigid":0,"az":189.0,"el":66.0,"health":1,"ss":44.0,"used":true},{"PRN":8,"gnssid":0,"svid":8,"sigid":7,"az":189.0,"el":66.0,"health":1,"ss":49.0,"used":true},{"PRN":44,"gnssid":1,"svid":131,"sigid":0,"az":198.0,"el":30.0,"health":1,"ss":38.0,"used":true},{"PRN":304,"gnssid":2,"svid":4,"sigid":1,"az":120.0,"el":40.0,"health":1,"ss":36.0,"used":true},{"PRN":304,"gnssid":2,"svid":4,"sigid":4,"az":120.0,"el":40.0,"health":1,"ss":39.0,"used":true},{"PRN":421,"gnssid":3,"svid":21,"sigid":0,"az":250.0,"el":35.0,"health":1,"ss":33.0,"used":true},{"PRN":421,"gnssid":3,"svid":21,"sigid":7,"az":250.0,"el":35.0,"health":1,"ss":35.0,"used":true},{"PRN":173,"gnssid":4,"svid":1,"sigid":0,"az":10.0,"el":80.0,"ss":20.0,"used":false},{"PRN":193,"gnssid":5,"svid":1,"sigid":0,"az":310.0,"el":12.0,"health":1,"ss":30.0,"used":true},{"PRN":70,"gnssid":6,"svid":6,"sigid":0,"az":155.0,"el":48.0,"freqid":8,"health":1,"ss":33.0,"used":false},{"PRN":801,"gnssid":7,"svid":1,"sigid":0,"az":90.0,"el":20.0,"ss":28.0,"used":false},{"PRN":17,"az":45.0,"el":9.0,"ss":22.0,"used":false},{"PRN":29,"az":273.0,"el":13.0,"ss":0.0,"used":false},{"PRN":8,"gnssid":0,"svid":8,"sigid":0,"az":189.0,"el":66.0,"health":1,"ss":45.0,"used":true}]}

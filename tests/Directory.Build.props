@@ -1,18 +1,27 @@
 <Project>
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
+  <!-- GpsdExporter.Testing is a plain class library of shared test helpers
+       (fixture loader, FakeGpsd, Prometheus text parser); everything else is a test project. -->
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <IsSharedTestSupport Condition="'$(MSBuildProjectName)' == 'GpsdExporter.Testing'">true</IsSharedTestSupport>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
-    <!-- xUnit v3 on Microsoft Testing Platform v2; global.json selects MTP for dotnet test. -->
-    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     <!-- Underscores in test method names are the convention here. -->
     <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
 
-  <ItemGroup>
+  <PropertyGroup Condition="'$(IsSharedTestSupport)' != 'true'">
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <!-- xUnit v3 on Microsoft Testing Platform v2; global.json selects MTP for dotnet test. -->
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsSharedTestSupport)' != 'true'">
     <PackageReference Include="xunit.v3.mtp-v2" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="NSubstitute" />
@@ -22,9 +31,17 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(IsSharedTestSupport)' != 'true'">
     <Using Include="Xunit" />
     <Using Include="Shouldly" />
     <Using Include="NSubstitute" />
+  </ItemGroup>
+
+  <!-- The gpsd fixtures (tests/fixtures) are copied next to every test assembly. -->
+  <ItemGroup Condition="'$(IsSharedTestSupport)' != 'true'">
+    <None Include="$(MSBuildThisFileDirectory)fixtures/**/*"
+          Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
   </ItemGroup>
 </Project>

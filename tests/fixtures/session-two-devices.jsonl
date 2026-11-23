@@ -1,0 +1,26 @@
+# Two receivers on one gpsd, with "device" on every object (section DEVICE and every
+# report class). /dev/ttyACM0 has a 3D fix and /dev/ttyUSB0 a 2D fix; both report GPS
+# svid 3, which must produce separate series per device.
+# Three epochs of interleaved TPV and SKY, then a DEVICE deactivation for /dev/ttyUSB0
+# (numeric "activated":0, as the daemon sends it), then one more TPV for /dev/ttyACM0.
+# Used by T4.8, T6.1.
+# Lines starting with '#' are stripped by the test fixture loader before replay.
+# Objects, field names, types and value ranges follow gpsd_json(5) (gpsd man page,
+# man/gpsd_json.adoc at gpsd commit edd38e78a875). Values are synthetic.
+{"class":"VERSION","release":"3.22","rev":"3.22","proto_major":3,"proto_minor":14}
+{"class":"DEVICES","devices":[{"class":"DEVICE","path":"/dev/ttyACM0","driver":"u-blox","subtype":"SW EXT CORE 1.00 (3fda8e),HW 00190000","activated":"2026-11-23T09:59:58.000Z","flags":1,"native":1,"cycle":1.0,"mincycle":0.02},{"class":"DEVICE","path":"/dev/ttyUSB0","driver":"u-blox","subtype":"SW EXT CORE 1.00 (3fda8e),HW 00190000","activated":"2026-11-23T09:59:58.000Z","flags":1,"native":1,"cycle":1.0,"mincycle":0.02}]}
+{"class":"WATCH","enable":true,"json":true,"nmea":false,"raw":0,"scaled":false,"timing":false,"split24":false,"pps":true}
+{"class":"TPV","device":"/dev/ttyACM0","mode":3,"time":"2026-11-23T10:00:00.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"altHAE":92.1,"speed":0.04}
+{"class":"TPV","device":"/dev/ttyUSB0","mode":2,"time":"2026-11-23T10:00:00.200Z","ept":0.01,"lat":40.689247,"lon":-74.044502,"speed":1.25}
+{"class":"SKY","device":"/dev/ttyACM0","time":"2026-11-23T10:00:00.000Z","hdop":0.8,"nSat":2,"uSat":2,"satellites":[{"PRN":3,"gnssid":0,"svid":3,"sigid":0,"az":163.0,"el":52.0,"ss":41.0,"used":true},{"PRN":8,"gnssid":0,"svid":8,"sigid":0,"az":189.0,"el":66.0,"ss":44.0,"used":true}]}
+{"class":"SKY","device":"/dev/ttyUSB0","time":"2026-11-23T10:00:00.200Z","hdop":1.9,"nSat":2,"uSat":1,"satellites":[{"PRN":3,"gnssid":0,"svid":3,"sigid":0,"az":40.0,"el":20.0,"ss":30.0,"used":true},{"PRN":14,"gnssid":0,"svid":14,"sigid":0,"az":300.0,"el":10.0,"ss":0.0,"used":false}]}
+{"class":"TPV","device":"/dev/ttyACM0","mode":3,"time":"2026-11-23T10:00:01.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"altHAE":92.1,"speed":0.04}
+{"class":"TPV","device":"/dev/ttyUSB0","mode":2,"time":"2026-11-23T10:00:01.200Z","ept":0.01,"lat":40.689247,"lon":-74.044502,"speed":1.25}
+{"class":"SKY","device":"/dev/ttyACM0","time":"2026-11-23T10:00:01.000Z","hdop":0.8,"nSat":2,"uSat":2,"satellites":[{"PRN":3,"gnssid":0,"svid":3,"sigid":0,"az":163.0,"el":52.0,"ss":41.0,"used":true},{"PRN":8,"gnssid":0,"svid":8,"sigid":0,"az":189.0,"el":66.0,"ss":44.0,"used":true}]}
+{"class":"SKY","device":"/dev/ttyUSB0","time":"2026-11-23T10:00:01.200Z","hdop":1.9,"nSat":2,"uSat":1,"satellites":[{"PRN":3,"gnssid":0,"svid":3,"sigid":0,"az":40.0,"el":20.0,"ss":30.0,"used":true},{"PRN":14,"gnssid":0,"svid":14,"sigid":0,"az":300.0,"el":10.0,"ss":0.0,"used":false}]}
+{"class":"TPV","device":"/dev/ttyACM0","mode":3,"time":"2026-11-23T10:00:02.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"altHAE":92.1,"speed":0.04}
+{"class":"TPV","device":"/dev/ttyUSB0","mode":2,"time":"2026-11-23T10:00:02.200Z","ept":0.01,"lat":40.689247,"lon":-74.044502,"speed":1.25}
+{"class":"SKY","device":"/dev/ttyACM0","time":"2026-11-23T10:00:02.000Z","hdop":0.8,"nSat":2,"uSat":2,"satellites":[{"PRN":3,"gnssid":0,"svid":3,"sigid":0,"az":163.0,"el":52.0,"ss":41.0,"used":true},{"PRN":8,"gnssid":0,"svid":8,"sigid":0,"az":189.0,"el":66.0,"ss":44.0,"used":true}]}
+{"class":"SKY","device":"/dev/ttyUSB0","time":"2026-11-23T10:00:02.200Z","hdop":1.9,"nSat":2,"uSat":1,"satellites":[{"PRN":3,"gnssid":0,"svid":3,"sigid":0,"az":40.0,"el":20.0,"ss":30.0,"used":true},{"PRN":14,"gnssid":0,"svid":14,"sigid":0,"az":300.0,"el":10.0,"ss":0.0,"used":false}]}
+{"class":"DEVICE","path":"/dev/ttyUSB0","activated":0}
+{"class":"TPV","device":"/dev/ttyACM0","mode":3,"time":"2026-11-23T10:00:03.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"altHAE":92.1,"speed":0.04}

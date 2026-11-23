@@ -5,4 +5,7 @@
 
   <!-- Release smoke tests run the published binary and image (CI only), so this
        project deliberately has no reference to the exporter project. -->
+  <ItemGroup>
+    <ProjectReference Include="../GpsdExporter.Testing/GpsdExporter.Testing.csproj" />
+  </ItemGroup>
 </Project>

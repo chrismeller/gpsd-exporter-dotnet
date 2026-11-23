@@ -1,0 +1,21 @@
+# Fix loss and recovery: one TPV per second with mode 3, 3, 2, 1, 0, 1, 2, 3 (section TPV).
+# Each TPV carries only the fields allowed for its mode:
+#   mode 3: position, altitude, velocity, climb and all error estimates;
+#   mode 2: as mode 3 without altitude, climb, epv, epc, sep and velD;
+#   mode 1: mode, time and ept only (time may be present but invalid without a fix);
+#   mode 0: mode only.
+# Used by T4.3, T4.4, T4.12.
+# Lines starting with '#' are stripped by the test fixture loader before replay.
+# Objects, field names, types and value ranges follow gpsd_json(5) (gpsd man page,
+# man/gpsd_json.adoc at gpsd commit edd38e78a875). Values are synthetic.
+{"class":"VERSION","release":"3.22","rev":"3.22","proto_major":3,"proto_minor":14}
+{"class":"DEVICES","devices":[{"class":"DEVICE","path":"/dev/ttyACM0","driver":"u-blox","subtype":"SW EXT CORE 1.00 (3fda8e),HW 00190000","activated":"2026-11-23T09:59:58.000Z","flags":1,"native":1,"cycle":1.0,"mincycle":0.02}]}
+{"class":"WATCH","enable":true,"json":true,"nmea":false,"raw":0,"scaled":false,"timing":false,"split24":false,"pps":true}
+{"class":"TPV","device":"/dev/ttyACM0","mode":3,"time":"2026-11-23T10:00:00.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"epx":1.5,"epy":1.9,"eph":2.4,"track":87.5,"magtrack":88.1,"speed":0.04,"eps":0.37,"epd":12.3,"velN":0.002,"velE":0.042,"ecefx":3980581.21,"ecefy":-102.41,"ecefz":4966824.52,"ecefpAcc":3.98,"altHAE":92.1,"altMSL":46.4,"geoidSep":45.7,"climb":0.011,"epv":3.2,"epc":6.4,"sep":4.0,"velD":-0.011}
+{"class":"TPV","device":"/dev/ttyACM0","mode":3,"time":"2026-11-23T10:00:01.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"epx":1.5,"epy":1.9,"eph":2.4,"track":87.5,"magtrack":88.1,"speed":0.04,"eps":0.37,"epd":12.3,"velN":0.002,"velE":0.042,"ecefx":3980581.21,"ecefy":-102.41,"ecefz":4966824.52,"ecefpAcc":3.98,"altHAE":92.1,"altMSL":46.4,"geoidSep":45.7,"climb":0.011,"epv":3.2,"epc":6.4,"sep":4.0,"velD":-0.011}
+{"class":"TPV","device":"/dev/ttyACM0","mode":2,"time":"2026-11-23T10:00:02.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"epx":1.5,"epy":1.9,"eph":2.4,"track":87.5,"magtrack":88.1,"speed":0.04,"eps":0.37,"epd":12.3,"velN":0.002,"velE":0.042,"ecefx":3980581.21,"ecefy":-102.41,"ecefz":4966824.52,"ecefpAcc":3.98}
+{"class":"TPV","device":"/dev/ttyACM0","mode":1,"time":"2026-11-23T10:00:03.000Z","ept":0.005}
+{"class":"TPV","device":"/dev/ttyACM0","mode":0}
+{"class":"TPV","device":"/dev/ttyACM0","mode":1,"time":"2026-11-23T10:00:05.000Z","ept":0.005}
+{"class":"TPV","device":"/dev/ttyACM0","mode":2,"time":"2026-11-23T10:00:06.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"epx":1.5,"epy":1.9,"eph":2.4,"track":87.5,"magtrack":88.1,"speed":0.04,"eps":0.37,"epd":12.3,"velN":0.002,"velE":0.042,"ecefx":3980581.21,"ecefy":-102.41,"ecefz":4966824.52,"ecefpAcc":3.98}
+{"class":"TPV","device":"/dev/ttyACM0","mode":3,"time":"2026-11-23T10:00:07.000Z","ept":0.005,"lat":51.477811,"lon":-0.001475,"epx":1.5,"epy":1.9,"eph":2.4,"track":87.5,"magtrack":88.1,"speed":0.04,"eps":0.37,"epd":12.3,"velN":0.002,"velE":0.042,"ecefx":3980581.21,"ecefy":-102.41,"ecefz":4966824.52,"ecefpAcc":3.98,"altHAE":92.1,"altMSL":46.4,"geoidSep":45.7,"climb":0.011,"epv":3.2,"epc":6.4,"sep":4.0,"velD":-0.011}
