@@ -43,5 +43,10 @@
           Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest"
           Visible="false" />
+    <!-- The Grafana dashboard, checked against the catalogue (T9.1) and imported into Grafana. -->
+    <None Include="$(MSBuildThisFileDirectory)../grafana-dashboard.json"
+          Link="grafana-dashboard.json"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
   </ItemGroup>
 </Project>
