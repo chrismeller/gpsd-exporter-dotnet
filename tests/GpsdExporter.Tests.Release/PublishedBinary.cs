@@ -26,10 +26,13 @@ internal static partial class PublishedBinary
         }
     }
 
-    public static Process Start(params string[] args)
+    public static Process Start(params string[] args) => StartIn(workingDirectory: null, args);
+
+    public static Process StartIn(string? workingDirectory, params string[] args)
     {
         var info = new ProcessStartInfo(Path)
         {
+            WorkingDirectory = workingDirectory ?? string.Empty,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
