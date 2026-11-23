@@ -27,5 +27,7 @@
     <PackageVersion Include="FsCheck" Version="3.6.0" />
     <!-- Stands in for the OTLP exporter in the own-telemetry tests (EXT-898). -->
     <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.21.0" />
+    <!-- Runs the published binary in a clean debian:12 container (T11.1). -->
+    <PackageVersion Include="Testcontainers" Version="4.17.0" />
   </ItemGroup>
 </Project>
