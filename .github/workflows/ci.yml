@@ -127,6 +127,10 @@ jobs:
             exit 1
           fi
 
+      # T11.4 / AC11.4: the systemd unit passes `systemd-analyze verify` with no warnings.
+      - name: Verify the systemd unit
+        run: scripts/verify-systemd-unit.sh
+
       # AC12.3: every third-party action is pinned to a full commit SHA.
       - name: Actions are pinned to commit SHAs
         run: |
