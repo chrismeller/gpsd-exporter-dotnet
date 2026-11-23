@@ -14,4 +14,8 @@
     <ProjectReference Include="../../src/GpsdExporter/GpsdExporter.csproj" />
     <ProjectReference Include="../GpsdExporter.Testing/GpsdExporter.Testing.csproj" />
   </ItemGroup>
+  <!-- The README, whose metrics table is checked against the catalogue (T9.2). -->
+  <ItemGroup>
+    <None Include="../../README.md" Link="README.md" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
 </Project>
