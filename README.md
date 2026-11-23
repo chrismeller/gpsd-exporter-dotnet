@@ -358,16 +358,20 @@ next to it (ignored by git). Verify's licence check is satisfied by its OpenSour
 
 ## Releasing
 
-Push a tag `vX.Y.Z` from the commit to release. The release workflow builds both binaries with that
-version, checks that `--version` and `gpsd_exporter_build_info` report it, and tests the image on both
-architectures. Only then does it push `ghcr.io/chrismeller/gpsd-exporter-dotnet:X.Y.Z` and `:latest` and
-create the GitHub release with the binaries, their checksums, `gpsd-exporter.service` and
-`gpsd-exporter.env`.
+Releases are managed by [Release Please](https://github.com/googleapis/release-please). Pull requests are
+squash-merged, and their titles must be [Conventional Commits](https://www.conventionalcommits.org/)
+(the "Pull request title" check enforces this). `feat:` makes a minor release, `fix:` a patch release, and
+a breaking change (`feat!:` or a `BREAKING CHANGE:` footer) a major one. `docs:`, `chore:`, `ci:`, `test:`,
+`build:` and `refactor:` do not make a release on their own.
 
-```sh
-git tag -a v1.0.0 -m "gpsd-exporter 1.0.0"
-git push origin v1.0.0
-```
+Release Please keeps a release pull request open on main with the next version and its changelog. To
+release, merge it. Release Please then tags the commit `vX.Y.Z` and creates the GitHub release, and the
+release workflow builds both binaries with that version, checks that `--version` and
+`gpsd_exporter_build_info` report it, and tests the image on both architectures. Only then does it push
+`ghcr.io/chrismeller/gpsd-exporter-dotnet:X.Y.Z` and `:latest` and attach the binaries, their checksums,
+`gpsd-exporter.service` and `gpsd-exporter.env` to the release.
+
+To force a particular version, put `Release-As: X.Y.Z` in the body of a commit on main.
 
 To try a release without publishing anything, run the Release workflow by hand (Actions, Release, Run
 workflow) with a test version. It does everything except publish, and leaves the release files as the
