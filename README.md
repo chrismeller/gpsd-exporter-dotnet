@@ -371,6 +371,11 @@ release workflow builds both binaries with that version, checks that `--version`
 `ghcr.io/chrismeller/gpsd-exporter-dotnet:X.Y.Z` and `:latest` and attach the binaries, their checksums,
 `gpsd-exporter.service` and `gpsd-exporter.env` to the release.
 
+Dependencies are kept current by [Renovate](https://docs.renovatebot.com/) (`renovate.json5`). It merges
+each update by itself once every check on its pull request has passed, and leaves it open otherwise.
+Updates to what ships (the OpenTelemetry packages, the .NET SDK and the image's base) are `fix(deps):`, so
+they lead to a patch release; test and CI updates are `chore(deps):` and do not.
+
 To force a particular version, put `Release-As: X.Y.Z` in the body of a commit on main.
 
 To try a release without publishing anything, run the Release workflow by hand (Actions, Release, Run
