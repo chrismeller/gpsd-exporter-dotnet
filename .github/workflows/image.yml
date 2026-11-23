@@ -1,0 +1,141 @@
+name: Image
+
+# R10: the container image, from the binaries workflow's artifacts (call it after that
+# workflow, in the same run). Each architecture is built and tested natively; then both are
+# assembled into one multi-architecture image with buildx. Publishing to GHCR is the release
+# workflow's job, so this workflow needs no write permission.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version for the image's OCI label.
+        type: string
+        default: 0.0.0-dev
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+  IMAGE: ghcr.io/chrismeller/gpsd-exporter-dotnet
+
+jobs:
+  test:
+    name: Test ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            rid: linux-x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            rid: linux-arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    env:
+      VERSION: ${{ inputs.version || '0.0.0-dev' }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET (version from global.json)
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - name: Download the binary
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: gpsd-exporter-${{ matrix.rid }}
+          path: dist
+
+      - name: Build the image
+        run: |
+          scripts/image-context.sh dist context
+          docker build --file packaging/docker/Dockerfile --build-arg VERSION="$VERSION" \
+            --tag gpsd-exporter-dotnet:test --tag "$IMAGE:latest" context
+
+      # T10.2 / AC10.2: a non-root user, and under the 50 MB budget.
+      - name: Check the user and size
+        run: |
+          user=$(docker image inspect --format '{{.Config.User}}' gpsd-exporter-dotnet:test)
+          size=$(docker image inspect --format '{{.Size}}' gpsd-exporter-dotnet:test)
+          echo "User: '$user'. Size: $size bytes ($((size / 1024 / 1024)) MiB)."
+          case "$user" in
+            ""|0|root|0:*|root:*) echo "::error::The image runs as root."; exit 1 ;;
+          esac
+          if [ "$size" -ge $((50 * 1024 * 1024)) ]; then
+            echo "::error::The image is $size bytes, over the 50 MB budget."
+            exit 1
+          fi
+
+      # T10.3: the README's docker example, run as written (the image just built is tagged
+      # with the name the README uses). No gpsd runs here, so it serves gpsd_up 0.
+      - name: Run the README example
+        run: |
+          example=$(awk '/<!-- readme-example: docker -->/ { found = 1; next } found && /^```sh/ { inside = 1; next } inside && /^```/ { exit } inside { print }' README.md)
+          test -n "$example" || { echo "::error::README.md has no docker example."; exit 1; }
+          printf 'Running:\n%s\n' "$example"
+          bash -euxo pipefail -c "$example"
+          for _ in $(seq 1 50); do curl -fsS http://localhost:9978/healthz && break; sleep 0.2; done
+          curl -fsS http://localhost:9978/metrics | grep -E '^gpsd_up(\{\})? 0$'
+          pid=$(docker inspect --format '{{.State.Pid}}' gpsd-exporter)
+          uid=$(ps -o uid= -p "$pid" | tr -d ' ')
+          echo "The container's process runs as uid $uid."
+          test "$uid" != 0
+          docker rm --force gpsd-exporter
+
+      # T10.1: the image under Testcontainers against FakeGpsd.
+      - name: Image tests
+        env:
+          GPSD_EXPORTER_IMAGE: gpsd-exporter-dotnet:test
+        run: >-
+          dotnet test --project tests/GpsdExporter.Tests.Release --configuration Release
+          --filter-class "*ImageTests"
+          --results-directory "$GITHUB_WORKSPACE/TestResults"
+          --report-xunit-trx
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image-test-results-${{ matrix.arch }}
+          path: TestResults/
+          if-no-files-found: warn
+
+  assemble:
+    name: Assemble multi-architecture image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      VERSION: ${{ inputs.version || '0.0.0-dev' }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download the binaries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: gpsd-exporter-linux-*
+          merge-multiple: true
+          path: dist
+
+      - name: Set up buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # The same build the release workflow pushes, written to an OCI archive instead.
+      - name: Build both architectures
+        run: |
+          scripts/image-context.sh dist context
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            --file packaging/docker/Dockerfile --build-arg VERSION="$VERSION" \
+            --output type=oci,dest=image.tar context
+          ls -l image.tar

@@ -106,6 +106,12 @@ jobs:
     name: Binaries
     uses: ./.github/workflows/binaries.yml
 
+  # R10: the container image from those binaries, tested on both architectures.
+  image:
+    name: Image
+    needs: binaries
+    uses: ./.github/workflows/image.yml
+
   repository-checks:
     name: Repository checks
     runs-on: ubuntu-24.04

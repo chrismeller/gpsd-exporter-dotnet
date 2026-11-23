@@ -44,6 +44,30 @@ double underscore, for example `GPSD_EXPORTER_GPSD__ADDRESS=localhost:2947` or
 defaults. Run `sudo systemctl restart gpsd-exporter` after changing it, and `journalctl -u gpsd-exporter`
 to see the logs.
 
+## Running the container image
+
+`ghcr.io/chrismeller/gpsd-exporter-dotnet` is published for `linux/amd64` and `linux/arm64`. It holds
+only the native binary on Microsoft's chiseled `runtime-deps` base (no shell or package manager) and
+runs as an unprivileged user.
+
+gpsd usually listens only on localhost, so the simplest setup shares the host's network. The exporter
+then reaches gpsd at its default `localhost:2947` and serves `/metrics` on port 9978:
+
+<!-- readme-example: docker -->
+```sh
+docker run -d --name gpsd-exporter --restart unless-stopped --network host \
+  ghcr.io/chrismeller/gpsd-exporter-dotnet:latest
+```
+
+If gpsd is elsewhere, or listens on an address the container can reach, use a normal network and pass
+its address. Flags and `GPSD_EXPORTER_` variables work as they do for the binary:
+
+```sh
+docker run -d --name gpsd-exporter --restart unless-stopped -p 9978:9978 \
+  -e GPSD_EXPORTER_GPSD__ADDRESS=gps-host.example:2947 \
+  ghcr.io/chrismeller/gpsd-exporter-dotnet:latest
+```
+
 ## Building
 
 The SDK version is pinned in `global.json`.
@@ -78,7 +102,8 @@ next to it (ignored by git). Verify's licence check is satisfied by its OpenSour
 | `tests/GpsdExporter.Tests.Release` | Smoke tests for the published binary and image. Skipped unless `GPSD_EXPORTER_BINARY` is set. |
 | `tests/GpsdExporter.Testing` | Shared test helpers: the fixture loader, FakeGpsd, and the Prometheus text parser and snapshot normalizer. |
 | `packaging/systemd` | The systemd unit and its example settings file. |
-| `scripts` | CI helpers: the glibc version check and the systemd unit check. |
+| `packaging/docker` | The container image's Dockerfile. |
+| `scripts` | CI helpers: the glibc version check, the systemd unit check and the image build context. |
 | `tests/fixtures` | gpsd sessions as `.jsonl`, built from `gpsd_json(5)` and gpsd's regression logs. See its README. |
 
 ## Licence
