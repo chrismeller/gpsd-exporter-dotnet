@@ -98,7 +98,7 @@ internal sealed class StateStore(TimeProvider timeProvider)
         return report switch
         {
             TpvReport tpv => Update(resolved, GpsdClass.Tpv, now, d => d with { Tpv = TpvState.Apply(d.Tpv, tpv, now) }),
-            SkyReport => Update(resolved, GpsdClass.Sky, now, d => d),
+            SkyReport sky => Update(resolved, GpsdClass.Sky, now, d => d with { Sky = SkyState.Apply(d.Sky, sky, now) }),
             TimeOffsetReport t => Update(resolved, t.Kind, now, d => d),
             OscReport => Update(resolved, GpsdClass.Osc, now, d => d),
             _ => null,

@@ -2,17 +2,12 @@ using GpsdExporter.Protocol;
 
 namespace GpsdExporter.State;
 
-/// <summary>One TPV epoch: the TPVs that share a <c>time</c>, merged.</summary>
-/// <param name="Time">The epoch's <c>time</c>, or null for an untimed TPV, which is an epoch of its own.</param>
-/// <param name="ReceivedAt">When the latest TPV of the epoch was received.</param>
-internal sealed record TpvEpoch(DateTimeOffset? Time, DateTimeOffset ReceivedAt, TimedFields<TpvField> Fields);
-
 /// <summary>
-/// A device's TPV state under the spec's merge rules (R4): a field is served if it was present
-/// in the current epoch or the one before it, and fix loss removes fields at once (AC4.1).
-/// Immutable; <see cref="Apply"/> returns a new state.
+/// A device's TPV state under the spec's merge rules (R4): fields follow the two-epoch rule of
+/// <see cref="Epochs{TField}"/>, and fix loss removes fields at once (AC4.1). Immutable;
+/// <see cref="Apply"/> returns a new state.
 /// </summary>
-internal sealed record TpvState(Timed<int> Mode, TpvEpoch Current, TpvEpoch? Previous)
+internal sealed record TpvState(Timed<int> Mode, Epochs<TpvField> Epochs)
 {
     /// <summary>Fields served only with a 2D or 3D fix (the spec's "mode ≥ 2" rows).</summary>
     public static readonly TpvField[] FixFields =
@@ -34,65 +29,33 @@ internal sealed record TpvState(Timed<int> Mode, TpvEpoch Current, TpvEpoch? Pre
         TpvField.AltHae, TpvField.AltMsl, TpvField.Climb, TpvField.Epv, TpvField.Epc,
     ];
 
-    /// <summary>The served value of a field: from the current epoch, else the previous one.</summary>
-    public Timed<double>? this[TpvField field] => Current.Fields[field] ?? Previous?.Fields[field];
+    private static readonly TpvField[] NoFixFields = [.. FixFields, .. ThreeDFields];
+
+    public Epoch<TpvField> Current => Epochs.Current;
+
+    public Epoch<TpvField>? Previous => Epochs.Previous;
+
+    /// <summary>The served value of a field.</summary>
+    public Timed<double>? this[TpvField field] => Epochs[field];
 
     /// <summary>Every served field, in enum order.</summary>
-    public IEnumerable<(TpvField Field, Timed<double> Value)> Served =>
-        FieldIndex<TpvField>.All
-            .Select(f => (Field: f, Value: this[f]))
-            .Where(p => p.Value.HasValue)
-            .Select(p => (p.Field, p.Value!.Value));
+    public IEnumerable<(TpvField Field, Timed<double> Value)> Served => Epochs.Served;
 
-    /// <summary>
-    /// The fix time (<c>gpsd_tpv_timestamp_seconds</c>): the epoch's <c>time</c>, served with a
-    /// 2D or 3D fix only.
-    /// </summary>
-    public Timed<DateTimeOffset>? Timestamp
-    {
-        get
-        {
-            if (Mode.Value < 2)
-            {
-                return null;
-            }
-
-            var epoch = Current.Time is not null ? Current : Previous;
-            return epoch?.Time is { } t ? new Timed<DateTimeOffset>(t, epoch.ReceivedAt) : null;
-        }
-    }
+    /// <summary>The fix time (<c>gpsd_tpv_timestamp_seconds</c>), served with a 2D or 3D fix only.</summary>
+    public Timed<DateTimeOffset>? Timestamp => Mode.Value < 2 ? null : Epochs.Time;
 
     /// <summary>Applies one TPV to <paramref name="state"/>, which is null before the device's first TPV.</summary>
     public static TpvState Apply(TpvState? state, TpvReport report, DateTimeOffset receivedAt)
     {
-        TpvEpoch current;
-        TpvEpoch? previous;
-        if (state is not null && report.Time is { } time && state.Current.Time == time)
+        ArgumentNullException.ThrowIfNull(report);
+        var epochs = Epochs<TpvField>.Apply(state?.Epochs, report.Time, report.Fields, receivedAt);
+        epochs = report.Mode switch
         {
-            // Another TPV of the same epoch.
-            current = state.Current with { ReceivedAt = receivedAt, Fields = state.Current.Fields.Merge(report.Fields, receivedAt) };
-            previous = state.Previous;
-        }
-        else
-        {
-            // A later time, an earlier time (a receiver reset), or no time: a new epoch.
-            current = new TpvEpoch(report.Time, receivedAt, TimedFields<TpvField>.From(report.Fields, receivedAt));
-            previous = state?.Current;
-        }
-
-        var dropped = report.Mode switch
-        {
-            < 2 => [.. FixFields, .. ThreeDFields],
-            2 => ThreeDFields,
-            _ => [],
+            < 2 => epochs.Without(NoFixFields),
+            2 => epochs.Without(ThreeDFields),
+            _ => epochs,
         };
 
-        if (dropped.Length > 0)
-        {
-            current = current with { Fields = current.Fields.Without(dropped) };
-            previous = previous is null ? null : previous with { Fields = previous.Fields.Without(dropped) };
-        }
-
-        return new TpvState(new Timed<int>(report.Mode, receivedAt), current, previous);
+        return new TpvState(new Timed<int>(report.Mode, receivedAt), epochs);
     }
 }

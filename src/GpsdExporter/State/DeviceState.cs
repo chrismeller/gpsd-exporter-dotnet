@@ -16,6 +16,9 @@ internal sealed record DeviceState(string Path)
     /// <summary>Null until the device's first TPV (AC3.4).</summary>
     public TpvState? Tpv { get; init; }
 
+    /// <summary>Null until the device's first SKY (AC3.4).</summary>
+    public SkyState? Sky { get; init; }
+
     /// <summary>When each class was last received from this device (<c>gpsd_device_last_report_timestamp_seconds</c>).</summary>
     public ImmutableSortedDictionary<GpsdClass, DateTimeOffset> LastReport { get; init; } =
         ImmutableSortedDictionary<GpsdClass, DateTimeOffset>.Empty;
