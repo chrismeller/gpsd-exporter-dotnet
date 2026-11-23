@@ -1,4 +1,5 @@
 using System.Text;
+using GpsdExporter.Configuration;
 using GpsdExporter.Connection;
 using GpsdExporter.Metrics;
 using GpsdExporter.Protocol;
@@ -28,29 +29,61 @@ internal sealed class MetricsHost : IAsyncDisposable
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
 
-    public MetricsHost(MetricsOptions? metrics = null, string? gpsdAddress = null)
+    public MetricsHost(
+        MetricsOptions? metrics = null,
+        string? gpsdAddress = null,
+        IReadOnlyDictionary<string, string>? settings = null,
+        Action<IServiceCollection>? configureServices = null)
     {
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(web => web
-            .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning))
-            .ConfigureTestServices(services =>
+        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(web =>
         {
-            services.RemoveAll<TimeProvider>();
-            services.AddSingleton<TimeProvider>(Time);
-            services.RemoveAll<MetricsOptions>();
-            services.AddSingleton(metrics ?? new MetricsOptions());
+            web.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
+            web.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<TimeProvider>();
+                services.AddSingleton<TimeProvider>(Time);
+                services.RemoveAll<MetricsOptions>();
+                services.AddSingleton(metrics ?? new MetricsOptions());
 
-            if (gpsdAddress is null)
+                if (gpsdAddress is null)
+                {
+                    // No gpsd connection: tests feed the state store directly.
+                    services.Remove(services.Single(d => d.ImplementationType == typeof(GpsdConnectionManager)));
+                }
+                else
+                {
+                    services.RemoveAll<GpsdOptions>();
+                    services.AddSingleton(new GpsdOptions { Address = gpsdAddress });
+                }
+
+                configureServices?.Invoke(services);
+            });
+        });
+
+        // Settings go in as GPSD_EXPORTER_ environment variables while the host is built, the
+        // way a deployment would set them. (WebApplicationFactory's UseSetting passes settings
+        // as command-line arguments, including a bare "--Section=" for each section, which the
+        // exporter's command line rejects.) Every host test runs in one serial collection, so
+        // no other host sees them.
+        var saved = new Dictionary<string, string?>();
+        foreach (var (key, value) in settings ?? new Dictionary<string, string>())
+        {
+            var name = ExporterSettings.EnvironmentPrefix + key.Replace(":", "__", StringComparison.Ordinal);
+            saved[name] = Environment.GetEnvironmentVariable(name);
+            Environment.SetEnvironmentVariable(name, value);
+        }
+
+        try
+        {
+            _client = _factory.CreateClient();
+        }
+        finally
+        {
+            foreach (var (name, value) in saved)
             {
-                // No gpsd connection: tests feed the state store directly.
-                services.Remove(services.Single(d => d.ImplementationType == typeof(GpsdConnectionManager)));
+                Environment.SetEnvironmentVariable(name, value);
             }
-            else
-            {
-                services.RemoveAll<GpsdOptions>();
-                services.AddSingleton(new GpsdOptions { Address = gpsdAddress });
-            }
-        }));
-        _client = _factory.CreateClient();
+        }
     }
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 23, 10, 0, 0, TimeSpan.Zero));

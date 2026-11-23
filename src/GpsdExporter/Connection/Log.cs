@@ -33,4 +33,13 @@ internal static partial class Log
 
     [LoggerMessage(10, LogLevel.Debug, "Keepalive: no data from gpsd for {Idle}, sent ?VERSION;")]
     public static partial void KeepaliveProbe(ILogger logger, TimeSpan idle);
+
+    [LoggerMessage(11, LogLevel.Debug, "Discarded a gpsd line ({Reason}): {Line}")]
+    public static partial void BadLine(ILogger logger, string reason, string line);
+
+    [LoggerMessage(12, LogLevel.Debug, "Discarded a gpsd line of {Length} bytes ({Reason})")]
+    public static partial void LongLine(ILogger logger, long length, string reason);
+
+    [LoggerMessage(13, LogLevel.Warning, "{Count} bad gpsd lines since {Since:yyyy-MM-ddTHH:mm:ss.fffZ}: {Reasons}. Debug logging shows each line.")]
+    public static partial void BadLineSummary(ILogger logger, long count, DateTimeOffset since, string reasons);
 }

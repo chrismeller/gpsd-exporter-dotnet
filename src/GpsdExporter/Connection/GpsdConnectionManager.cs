@@ -34,6 +34,7 @@ internal sealed class GpsdConnectionManager : BackgroundService
     private readonly ILogger<GpsdConnectionManager> _logger;
     private readonly ReconnectBackoff _backoff;
     private readonly GpsdLineReader _lineReader = new();
+    private readonly BadLineLog _badLines;
     private readonly string _host;
     private readonly int _port;
     private readonly byte[] _watch;
@@ -58,6 +59,7 @@ internal sealed class GpsdConnectionManager : BackgroundService
         _stats = stats;
         _time = time;
         _logger = logger;
+        _badLines = new BadLineLog(logger, time);
         _backoff = new ReconnectBackoff(options.ReconnectInitialDelay, options.ReconnectMaxDelay);
         if (!GpsdOptions.TryParseAddress(options.Address, out _host, out _port))
         {
@@ -65,6 +67,12 @@ internal sealed class GpsdConnectionManager : BackgroundService
         }
 
         _watch = Encoding.ASCII.GetBytes(options.WatchCommand + "\n");
+    }
+
+    public override void Dispose()
+    {
+        _badLines.Dispose();
+        base.Dispose();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -315,11 +323,13 @@ internal sealed class GpsdConnectionManager : BackgroundService
             if (result.Error is { } error)
             {
                 owner._stats.ParseError(error);
+                owner._badLines.Discarded(error, line);
             }
 
             foreach (var fieldError in result.FieldErrors)
             {
                 owner._stats.ParseError(fieldError.Reason);
+                owner._badLines.Discarded(fieldError.Reason, line);
             }
 
             if (result.Report is not { } report)
@@ -342,6 +352,7 @@ internal sealed class GpsdConnectionManager : BackgroundService
             if (owner._store.Apply(report) is { } skipped)
             {
                 owner._stats.ParseError(skipped);
+                owner._badLines.Discarded(skipped, line);
             }
 
             var after = owner._store.Current.Devices;
@@ -356,6 +367,7 @@ internal sealed class GpsdConnectionManager : BackgroundService
             var now = Touch();
             owner._stats.LineReceived(now);
             owner._stats.ParseError(ParseErrorReason.TooLong);
+            owner._badLines.DiscardedTooLong(length);
         }
 
         private DateTimeOffset Touch()

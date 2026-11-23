@@ -9,6 +9,10 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.21.0" />
     <!-- Pre-release; pinned exactly. The golden exposition test (T7.2) catches any change in output. -->
     <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="[1.21.0-beta.1]" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.21.0" />
+    <!-- Release candidate; pinned exactly. -->
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="[1.21.0-rc.1]" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">
@@ -21,5 +25,7 @@
     <PackageVersion Include="Verify.XunitV3" Version="33.7.2" />
     <!-- Property-based tests (T2.7), approved 2026-11-23. Driven from plain xUnit tests. -->
     <PackageVersion Include="FsCheck" Version="3.6.0" />
+    <!-- Stands in for the OTLP exporter in the own-telemetry tests (EXT-898). -->
+    <PackageVersion Include="OpenTelemetry.Exporter.InMemory" Version="1.21.0" />
   </ItemGroup>
 </Project>

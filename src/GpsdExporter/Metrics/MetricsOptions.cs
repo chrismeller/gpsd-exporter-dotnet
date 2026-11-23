@@ -13,4 +13,10 @@ internal sealed record MetricsOptions
     /// exposed. Turn off if their cardinality matters. Default true.
     /// </summary>
     public bool Satellites { get; set; } = true;
+
+    /// <summary>
+    /// <c>Metrics:Runtime</c>: whether .NET runtime and process metrics are also on
+    /// <c>/metrics</c>. They always go to OTLP when OTLP is on. Default false.
+    /// </summary>
+    public bool Runtime { get; set; }
 }

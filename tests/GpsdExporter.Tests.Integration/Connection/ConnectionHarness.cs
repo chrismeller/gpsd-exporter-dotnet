@@ -1,5 +1,6 @@
 using GpsdExporter.Connection;
 using GpsdExporter.State;
+using GpsdExporter.Testing.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 namespace GpsdExporter.Tests.Integration.Connection;
@@ -47,6 +48,13 @@ internal sealed class ConnectionHarness : IAsyncDisposable
     }
 
     /// <summary>Waits in real time, without moving fake time, until the condition holds.</summary>
+    /// <summary>
+    /// Waits for a log entry. The manager logs each event just after updating its counters, so
+    /// a test that asserts on the log waits for the log, not the counter.
+    /// </summary>
+    public Task WaitForLog(Func<LogEntry, bool> match, string because) =>
+        WaitUntil(() => Logger.Entries.Any(match), because);
+
     public static async Task WaitUntil(Func<bool> condition, string because)
     {
         var deadline = DateTime.UtcNow + RealTimeLimit;
