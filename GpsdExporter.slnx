@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GpsdExporter/GpsdExporter.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GpsdExporter.Tests.Integration/GpsdExporter.Tests.Integration.csproj" />
+    <Project Path="tests/GpsdExporter.Tests.Metrics/GpsdExporter.Tests.Metrics.csproj" />
+    <Project Path="tests/GpsdExporter.Tests.Release/GpsdExporter.Tests.Release.csproj" />
+    <Project Path="tests/GpsdExporter.Tests.Unit/GpsdExporter.Tests.Unit.csproj" />
+  </Folder>
+</Solution>
