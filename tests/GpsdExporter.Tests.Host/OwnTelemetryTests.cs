@@ -20,6 +20,7 @@ namespace GpsdExporter.Tests.Host;
 /// The exporter's own telemetry, which goes over OTLP in production. The tests add in-memory
 /// exporters to the same logger and meter providers that the OTLP exporter is added to.
 /// </summary>
+[Collection(OwnTelemetryTestGroup.Name)]
 public sealed partial class OwnTelemetryTests : IAsyncDisposable
 {
     private static readonly string[] OwnMetricNames =
@@ -159,4 +160,15 @@ public sealed partial class OwnTelemetryTests : IAsyncDisposable
             }
         }
     }
+}
+
+/// <summary>
+/// A meter provider subscribes to meters by name across the whole process, so while another
+/// test's host is running, its <c>GpsdExporter</c> instruments would show up here too. These
+/// tests therefore run on their own, after the parallel ones.
+/// </summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class OwnTelemetryTestGroup
+{
+    public const string Name = "Own telemetry";
 }
