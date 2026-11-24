@@ -22,7 +22,7 @@ namespace GpsdExporter.Tests.Release;
 public sealed partial class DashboardImportTests
 {
     // Current releases, by tag; the Prometheus version matches the CI promtool.
-    private const string GrafanaImage = "grafana/grafana:13.3.1";
+    private const string GrafanaImage = "grafana/grafana:13.3.2";
     private const string PrometheusImage = "prom/prometheus:v3.5.0";
     private const string AdminPassword = "gpsd-exporter-test";
 
