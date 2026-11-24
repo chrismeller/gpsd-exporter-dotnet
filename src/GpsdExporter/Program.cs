@@ -4,6 +4,7 @@ var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddGpsdExporter();
+builder.AddGpsdHealthCheck();
 
 var app = builder.Build();
 
