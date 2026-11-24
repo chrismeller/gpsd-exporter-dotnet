@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -5,6 +6,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 
 namespace Microsoft.Extensions.Hosting;
 
@@ -26,6 +28,11 @@ public static class Extensions
         return builder;
     }
 
+    /// <summary>
+    /// Logs and metrics through OpenTelemetry, exported over OTLP when
+    /// <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set. The application adds its own meters with
+    /// <c>ConfigureOpenTelemetryMeterProvider</c>; this adds .NET runtime and process metrics.
+    /// </summary>
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         builder.Logging.AddOpenTelemetry(logging =>
@@ -35,15 +42,32 @@ public static class Extensions
         });
 
         builder.Services.AddOpenTelemetry()
-            .WithMetrics(metrics => metrics.AddRuntimeInstrumentation());
+            .ConfigureResource(resource => resource
+                .AddService(builder.Environment.ApplicationName, serviceVersion: ApplicationVersion())
+                // A resource added later wins, so OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES
+                // still override the name and version set above.
+                .AddEnvironmentVariableDetector())
+            .WithMetrics(metrics => metrics
+                .AddRuntimeInstrumentation()
+                .AddProcessInstrumentation());
 
         builder.AddOpenTelemetryExporters();
 
         return builder;
     }
 
+    /// <summary>The entry assembly's informational version, without build metadata (<c>+commit</c>).</summary>
+    private static string? ApplicationVersion()
+    {
+        var version = Assembly.GetEntryAssembly()?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        var plus = version?.IndexOf('+', StringComparison.Ordinal) ?? -1;
+        return plus < 0 ? version : version![..plus];
+    }
+
     private static TBuilder AddOpenTelemetryExporters<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        // The OTLP exporter reads the other OTEL_EXPORTER_OTLP_* settings (protocol, headers,
+        // timeout) from IConfiguration itself, so environment variables are all it needs.
         var useOtlpExporter = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
 
         if (useOtlpExporter)
