@@ -10,7 +10,7 @@ var gpsd = builder.AddDotnetProject("fake-gpsd", "../../tools/GpsdExporter.FakeG
 // variables itself, so its logs and metrics show up in the dashboard.
 var exporter = builder.AddDotnetProject("gpsd-exporter", "../GpsdExporter/GpsdExporter.csproj")
     .WithEnvironment("GPSD_EXPORTER_GPSD__ADDRESS", gpsd.GetEndpoint("gpsd").Property(EndpointProperty.HostAndPort))
-    .WithHttpHealthCheck("/health")
+    .WithHttpHealthCheck("/readyz")
     .WaitFor(gpsd);
 
 // Prometheus scrapes the exporter's /metrics. The target is only known once Aspire has
