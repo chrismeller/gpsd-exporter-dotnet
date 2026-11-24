@@ -255,6 +255,18 @@ reports the signal.
 | `gpsd_exporter_scrape_duration_seconds` | histogram | s |  | Time to collect the gpsd metrics for a scrape. |
 <!-- metrics-table:end -->
 
+## Upgrading from 1.x
+
+2.0 rebuilt the exporter's hosting on the standard .NET and OpenTelemetry setup. The gpsd metrics,
+flags and port are unchanged, but some settings and endpoints changed:
+
+| 1.x | 2.0 |
+| -- | -- |
+| `Otlp:Endpoint` (`GPSD_EXPORTER_OTLP__ENDPOINT`) | `OTEL_EXPORTER_OTLP_ENDPOINT`, plus the other `OTEL_*` variables (see [OpenTelemetry (OTLP)](#opentelemetry-otlp)). The old setting is ignored. |
+| `Logging:Format` (`GPSD_EXPORTER_LOGGING__FORMAT`) | `Logging:Console:FormatterName` (`GPSD_EXPORTER_LOGGING__CONSOLE__FORMATTERNAME`). The old setting is ignored, so logs fall back to text. `--log-format` works as before. |
+| `Metrics:Runtime`: .NET runtime metrics on `/metrics` | Removed. Runtime and process metrics are sent over OTLP only, when it is on. |
+| `/healthz` answers `ok` to GET only | `/healthz` answers `Healthy` to any method. `/readyz` is new and reports whether gpsd is connected (see [Health checks](#health-checks)). |
+
 ## Migrating from the Go exporter
 
 The binary takes the Go exporter's flags (`-d`, `-l`, `-v`, `-vv`; `-p` is ignored) and listens on the
