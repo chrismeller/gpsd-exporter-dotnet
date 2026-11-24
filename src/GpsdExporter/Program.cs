@@ -1,6 +1,9 @@
+using GpsdExporter;
+
 var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.AddServiceDefaults();
+builder.AddGpsdExporter();
 
 var app = builder.Build();
 
