@@ -2,10 +2,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using GpsdExporter.Metrics;
 
-namespace GpsdExporter.Tests.Metrics.Docs;
+namespace GpsdExporter.Tests.Core.Docs;
 
 /// <summary>
-/// T9.2 / AC9.2: the README's metrics reference is the catalogue, rendered. The rendered table
+/// The README's metrics reference is the catalogue, rendered. The rendered table
 /// is a Verify snapshot, so a catalogue change shows up as a snapshot diff, and the README must
 /// hold exactly the same text between its metrics-table markers.
 /// </summary>
@@ -32,7 +32,7 @@ public sealed partial class ReadmeTests
         section.ShouldBe(
             Render(),
             "The README's metrics table is out of date. Replace the text between the metrics-table markers with "
-            + "the approved snapshot, tests/GpsdExporter.Tests.Metrics/Snapshots/ReadmeTests.T9_2_the_metrics_table_matches_the_approved_snapshot.verified.md.");
+            + "the approved snapshot, tests/GpsdExporter.Tests.Core/Snapshots/ReadmeTests.T9_2_the_metrics_table_matches_the_approved_snapshot.verified.md.");
     }
 
     [Fact]

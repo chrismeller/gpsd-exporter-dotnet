@@ -67,7 +67,7 @@ jobs:
       # through as plain output.
       - name: Publish
         run: |
-          dotnet publish src/GpsdExporter.Legacy --configuration Release --runtime "$RID" \
+          dotnet publish src/GpsdExporter --configuration Release --runtime "$RID" \
             -p:Version="$VERSION" --output out 2>&1 | tee publish.log
           if grep -nE ': warning [A-Z]+[0-9]+' publish.log; then
             echo "::error::The publish produced warnings."

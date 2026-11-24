@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace GpsdExporter.Tests.Metrics;
+namespace GpsdExporter.Tests.Core;
 
 internal static class VerifyConfig
 {

@@ -60,8 +60,8 @@ curl -s localhost:9978/metrics | grep gpsd_up
 
 Settings go in `/etc/default/gpsd-exporter` as `GPSD_EXPORTER_` variables, the section and key joined by a
 double underscore, for example `GPSD_EXPORTER_GPSD__ADDRESS=localhost:2947` or
-`GPSD_EXPORTER_HTTP__LISTEN=127.0.0.1:9978`. The example file lists the common ones with their
-defaults. Run `sudo systemctl restart gpsd-exporter` after changing it, and `journalctl -u gpsd-exporter`
+`GPSD_EXPORTER_HTTP__LISTEN=127.0.0.1:9978`, and OTLP's `OTEL_` variables go there too (see
+[OpenTelemetry](#opentelemetry-otlp)). The example file lists the common ones with their defaults. Run `sudo systemctl restart gpsd-exporter` after changing it, and `journalctl -u gpsd-exporter`
 to see the logs.
 
 ## Running the container image
@@ -108,15 +108,40 @@ variable the section and key are joined by a double underscore (`Gpsd:Address` i
 | `Gpsd:KeepaliveTimeout` | | `00:00:05` | |
 | `Staleness:Tpv`, `:Sky`, `:Pps`, `:Toff`, `:Osc` | | 10 s, 30 s, 10 s, 10 s, 30 s | How long a report's values are served after it arrived. |
 | `Metrics:Satellites` | | `true` | Per-satellite series. Turn off if their number matters. |
-| `Metrics:Runtime` | | `false` | .NET runtime and process metrics on `/metrics`. |
-| `Http:Listen` | `-l`, `--listen` | `:9978` | `[addr]:port`; `:9978` listens on every address. |
-| `Http:MetricsPath` | | `/metrics` | `/healthz` is always served too. |
-| `Otlp:Endpoint` | | (off) | Send the exporter's own metrics and logs over OTLP. The standard `OTEL_EXPORTER_OTLP_*` variables work too. GPS metrics are never sent over OTLP. |
-| `Logging:Format` | `--log-format` | `text` | `text` or `json`. |
+| `Http:Listen` | `-l`, `--listen` | `:9978` | `[addr]:port`; `:9978` listens on every address. When it is not set, `ASPNETCORE_URLS` is used if set (the Aspire AppHost sets it), otherwise `:9978`. |
+| `Http:MetricsPath` | | `/metrics` | `/healthz` and `/readyz` are always served too (see [Health checks](#health-checks)). |
+| `Logging:Console:FormatterName` | `--log-format` | `text` | `text` or `json`. |
 | `Logging:LogLevel:Default` | `-v`, `-vv` | `Information` | `-v` is Debug, `-vv` is Trace. |
 | | `-p` | | Accepted for compatibility with the Go exporter and ignored with a warning. |
 | | `--version` | | Prints the version and exits. |
 | | `-h`, `--help` | | Prints the flags and exits. |
+
+### OpenTelemetry (OTLP)
+
+The exporter can send its own metrics and logs over OTLP: `gpsd_up`, build information, connection,
+message and parse-error counts, and .NET runtime and process metrics. The gpsd metrics are never sent
+over OTLP; they are only served on `/metrics`. OTLP is configured with the standard OpenTelemetry
+environment variables, without the `GPSD_EXPORTER_` prefix:
+
+| Variable | Notes |
+| -- | -- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Turns OTLP on, for example `http://collector:4317`. Unset, nothing is sent. |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` (the default in .NET, port 4317) or `http/protobuf` (port 4318). Set `http/protobuf` for an OTLP/HTTP endpoint. |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Headers for every export, as `key1=value1,key2=value2`, for example an API key. |
+| `OTEL_SERVICE_NAME` | The `service.name` resource attribute; `gpsd-exporter` by default. |
+| `OTEL_RESOURCE_ATTRIBUTES` | More resource attributes, as `key1=value1,key2=value2`. |
+| `OTEL_METRIC_EXPORT_INTERVAL` | Milliseconds between metric exports; 60000 by default. |
+
+The OpenTelemetry .NET SDK's other `OTEL_EXPORTER_OTLP_*` variables, such as the timeout, work too.
+
+### Health checks
+
+| Path | Answers |
+| -- | -- |
+| `/healthz` | Liveness: `200 Healthy` while the process is running and serving HTTP. It does not look at gpsd, so a gpsd outage does not get the exporter restarted. |
+| `/readyz` | Readiness: `200 Healthy` while the exporter is connected to gpsd, `503 Unhealthy` otherwise. |
+
+`/metrics` answers either way, with `gpsd_up 0` while gpsd is unreachable.
 
 ## Grafana dashboard
 
@@ -229,6 +254,18 @@ reports the signal.
 | `gpsd_exporter_last_message_timestamp_seconds` | gauge | s |  | When any line was last received from gpsd. Present only after the first line. |
 | `gpsd_exporter_scrape_duration_seconds` | histogram | s |  | Time to collect the gpsd metrics for a scrape. |
 <!-- metrics-table:end -->
+
+## Upgrading from 1.x
+
+2.0 rebuilt the exporter's hosting on the standard .NET and OpenTelemetry setup. The gpsd metrics,
+flags and port are unchanged, but some settings and endpoints changed:
+
+| 1.x | 2.0 |
+| -- | -- |
+| `Otlp:Endpoint` (`GPSD_EXPORTER_OTLP__ENDPOINT`) | `OTEL_EXPORTER_OTLP_ENDPOINT`, plus the other `OTEL_*` variables (see [OpenTelemetry (OTLP)](#opentelemetry-otlp)). The old setting is ignored. |
+| `Logging:Format` (`GPSD_EXPORTER_LOGGING__FORMAT`) | `Logging:Console:FormatterName` (`GPSD_EXPORTER_LOGGING__CONSOLE__FORMATTERNAME`). The old setting is ignored, so logs fall back to text. `--log-format` works as before. |
+| `Metrics:Runtime`: .NET runtime metrics on `/metrics` | Removed. Runtime and process metrics are sent over OTLP only, when it is on. |
+| `/healthz` answers `ok` to GET only | `/healthz` answers `Healthy` to any method. `/readyz` is new and reports whether gpsd is connected (see [Health checks](#health-checks)). |
 
 ## Migrating from the Go exporter
 
@@ -345,22 +382,27 @@ dotnet test
 `dotnet test` uses Microsoft Testing Platform (selected in `global.json`). Compiler, analyzer, trim and
 Native AOT warnings fail the build, as do known-vulnerable NuGet packages.
 
+The solution includes the Aspire AppHost (`src/GpsdExporter.AppHost`), which needs the
+[Aspire CLI](https://aspire.dev/get-started/install-cli/) on the `PATH` to build (`dotnet tool install
+--global Aspire.Cli`). Only the AppHost needs it; the exporter itself builds without it.
+
 To produce the native binary:
 
 ```sh
 dotnet publish src/GpsdExporter -r linux-x64 -c Release
 ```
 
-Exposition tests use [Verify](https://github.com/VerifyTests/Verify) for snapshots. Approved snapshots are
-`*.verified.txt` files under `tests/GpsdExporter.Tests.Metrics/Snapshots`; a mismatch writes a `.received.txt`
+Snapshot tests use [Verify](https://github.com/VerifyTests/Verify). Approved snapshots are `*.verified.*`
+files in the `Snapshots` folder of `tests/GpsdExporter.Tests.Host` (the full scrape) and
+`tests/GpsdExporter.Tests.Core` (the README metrics table); a mismatch writes a `.received.*` file
 next to it (ignored by git). Verify's licence check is satisfied by its OpenSource exemption in
 `Directory.Build.props`, which must be renewed before `Verify_SponsorshipExemptionUntil`.
 
 ### Running it locally with Aspire
 
 `src/GpsdExporter.AppHost` starts everything needed to watch the exporter work, with no GPS receiver. It
-is for development only and is never shipped. It needs the [Aspire CLI](https://aspire.dev/get-started/install-cli/)
-and a running Docker (for Prometheus).
+is for development only and is never shipped. It needs the Aspire CLI (see above) and a running Docker
+(for Prometheus).
 
 ```sh
 aspire run
@@ -409,13 +451,14 @@ workflow) with a test version. It does everything except publish, and leaves the
 
 | Path | Contents |
 | -- | -- |
-| `src/GpsdExporter` | The exporter (Native AOT, ASP.NET Core slim host). |
+| `src/GpsdExporter` | The exporter (Native AOT, ASP.NET Core slim host): command line and configuration, `/metrics`, health checks and OTLP. |
 | `src/GpsdExporter.Core` | The gpsd protocol, state, connection and metric catalogue, independent of hosting. |
-| `tests/GpsdExporter.Tests.Core` | Parser, state store, staleness, backoff, metric catalogue, and the connection manager against FakeGpsd. References only `GpsdExporter.Core`. |
-| `tests/GpsdExporter.Tests.Unit` | Configuration and build info. No sockets or HTTP. |
-| `tests/GpsdExporter.Tests.Metrics` | Exposition tests: the host in-process, `/metrics` scraped and parsed. |
-| `tests/GpsdExporter.Tests.Integration` | The exporter process against FakeGpsd, a scripted in-process TCP server. |
-| `tests/GpsdExporter.Tests.Release` | Smoke tests for the published binary and image. Skipped unless `GPSD_EXPORTER_BINARY` is set. |
+| `src/GpsdExporter.ServiceDefaults` | The Aspire service defaults: OpenTelemetry logs and metrics, OTLP export, and the `/healthz` and `/readyz` endpoints. |
+| `src/GpsdExporter.AppHost` | The Aspire AppHost, for running the exporter locally with a fake gpsd and Prometheus. Development only, never shipped. |
+| `tools/GpsdExporter.FakeGpsd` | A stand-in gpsd that replays a test fixture forever, used by the AppHost. Development only. |
+| `tests/GpsdExporter.Tests.Core` | Parser, state store, staleness, backoff, metric catalogue, the connection manager against FakeGpsd, and the README and dashboard checks. References only `GpsdExporter.Core`. |
+| `tests/GpsdExporter.Tests.Host` | The exporter: in process (`/metrics` scraped and parsed, health checks, OTLP, options) and as a process (command line, exit codes, listen address). |
+| `tests/GpsdExporter.Tests.Release` | Smoke tests for the published binary and image. Skipped unless `GPSD_EXPORTER_BINARY` or `GPSD_EXPORTER_IMAGE` is set. |
 | `tests/GpsdExporter.Testing` | Shared test helpers: the fixture loader, FakeGpsd, and the Prometheus text parser and snapshot normalizer. |
 | `grafana-dashboard.json` | The Grafana dashboard: fix, position, satellites, DOP, PPS and TOFF, and exporter health. |
 | `packaging/systemd` | The systemd unit and its example settings file. |

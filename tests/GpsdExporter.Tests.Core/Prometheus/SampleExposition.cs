@@ -1,4 +1,4 @@
-namespace GpsdExporter.Tests.Metrics.Prometheus;
+namespace GpsdExporter.Tests.Core.Prometheus;
 
 /// <summary>A hand-written scrape in the shape the OpenTelemetry Prometheus exporter produces.</summary>
 internal static class SampleExposition

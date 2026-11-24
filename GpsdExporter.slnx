@@ -3,17 +3,13 @@
     <Project Path="src/GpsdExporter/GpsdExporter.csproj" />
     <Project Path="src/GpsdExporter.AppHost/GpsdExporter.AppHost.csproj" />
     <Project Path="src/GpsdExporter.Core/GpsdExporter.Core.csproj" />
-    <Project Path="src/GpsdExporter.Legacy/GpsdExporter.Legacy.csproj" />
     <Project Path="src/GpsdExporter.ServiceDefaults/GpsdExporter.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/GpsdExporter.Testing/GpsdExporter.Testing.csproj" />
     <Project Path="tests/GpsdExporter.Tests.Core/GpsdExporter.Tests.Core.csproj" />
     <Project Path="tests/GpsdExporter.Tests.Host/GpsdExporter.Tests.Host.csproj" />
-    <Project Path="tests/GpsdExporter.Tests.Integration/GpsdExporter.Tests.Integration.csproj" />
-    <Project Path="tests/GpsdExporter.Tests.Metrics/GpsdExporter.Tests.Metrics.csproj" />
     <Project Path="tests/GpsdExporter.Tests.Release/GpsdExporter.Tests.Release.csproj" />
-    <Project Path="tests/GpsdExporter.Tests.Unit/GpsdExporter.Tests.Unit.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/GpsdExporter.FakeGpsd/GpsdExporter.FakeGpsd.csproj" />

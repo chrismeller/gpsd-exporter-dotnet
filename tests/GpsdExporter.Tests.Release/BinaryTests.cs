@@ -39,7 +39,7 @@ public sealed class BinaryTests
             {
                 try
                 {
-                    (await http.GetStringAsync(new Uri("/healthz", UriKind.Relative), Ct)).ShouldBe("ok\n");
+                    (await http.GetStringAsync(new Uri("/healthz", UriKind.Relative), Ct)).ShouldBe("Healthy");
                     break;
                 }
                 catch (HttpRequestException) when (DateTime.UtcNow < deadline)

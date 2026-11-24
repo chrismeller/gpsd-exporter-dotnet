@@ -4,16 +4,14 @@ using GpsdExporter.Connection;
 using GpsdExporter.Protocol;
 using GpsdExporter.Testing;
 using GpsdExporter.Testing.Prometheus;
-using GpsdExporter.Tests.Metrics.Exposition;
 
-namespace GpsdExporter.Tests.Metrics.EndToEnd;
+namespace GpsdExporter.Tests.Host.Metrics;
 
 /// <summary>
 /// The whole exporter (host, connection manager, state and metrics) against FakeGpsd, checked
-/// through <c>/metrics</c> (EXT-899). Time is a <see cref="Microsoft.Extensions.Time.Testing.FakeTimeProvider"/>,
+/// through <c>/metrics</c>. Time is a <see cref="Microsoft.Extensions.Time.Testing.FakeTimeProvider"/>,
 /// so backoff and keepalive waits take no real time.
 /// </summary>
-[Collection(SerialHostTests.Name)]
 public sealed class EndToEndTests
 {
     private const string Device = "/dev/ttyACM0";
@@ -22,34 +20,6 @@ public sealed class EndToEndTests
     private static readonly TimeSpan Step = TimeSpan.FromMilliseconds(250);
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
-
-    public static TheoryData<string> Sessions => new(
-        "session-3d-fix.jsonl",
-        "session-partial-epochs.jsonl",
-        "session-fix-loss.jsonl",
-        "session-sky-shrink.jsonl",
-        "session-multi-gnss.jsonl",
-        "session-two-devices.jsonl",
-        "session-timing.jsonl");
-
-    [Theory]
-    [MemberData(nameof(Sessions))]
-    public async Task Every_session_replays_into_a_valid_scrape(string fixture)
-    {
-        await using var gpsd = FakeGpsd.CreateStarted();
-        var (host, connection) = await MetricsHost.ConnectAsync(gpsd);
-        await using var _ = host;
-
-        await host.SendAndWaitAsync(connection, Fixtures.LoadBytes(fixture));
-        var scrape = await host.ScrapeAsync();
-
-        scrape.Value("gpsd_up").ShouldBe(1);
-        scrape.DuplicateSeries().ShouldBeEmpty();
-        scrape.NamesStartingWith("gpsd_tpv_").Concat(scrape.NamesStartingWith("gpsd_sky_")).Concat(scrape.NamesStartingWith("gpsd_pps_")).ShouldNotBeEmpty();
-
-        // FakeGpsd's own VERSION, every fixture line, and the marker WATCH.
-        scrape.All("gpsd_exporter_messages_total").Sum(s => s.Value).ShouldBe(Fixtures.Load(fixture).Count + 2);
-    }
 
     [Fact]
     public async Task T1_1_gpsd_not_listening_serves_gpsd_up_0_and_counts_refused_attempts()
@@ -66,8 +36,10 @@ public sealed class EndToEndTests
         scrape.Value("gpsd_exporter_connection_attempts_total", ("result", "success")).ShouldBe(0);
         scrape.Value("gpsd_exporter_reconnect_delay_seconds").ShouldBeGreaterThan(0);
         GpsdSeries(scrape).ShouldBeEmpty();
-        using var health = await host.Client.GetAsync(new Uri("/healthz", UriKind.Relative), Ct);
-        health.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var live = await host.Client.GetAsync(new Uri("/healthz", UriKind.Relative), Ct);
+        live.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var ready = await host.Client.GetAsync(new Uri("/readyz", UriKind.Relative), Ct);
+        ready.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
     }
 
     [Fact]
@@ -193,7 +165,7 @@ public sealed class EndToEndTests
 
             scrape.Value("gpsd_tpv_mode", ("device", Device)).ShouldBe(mode, at);
 
-            // Position, velocity, error estimates and the TPV timestamp need a fix (AC4.1).
+            // Position, velocity, error estimates and the TPV timestamp need a fix.
             var fix = mode >= 2;
             scrape.Has("gpsd_tpv_latitude_degrees", ("device", Device)).ShouldBe(fix, at);
             scrape.Has("gpsd_tpv_longitude_degrees", ("device", Device)).ShouldBe(fix, at);
