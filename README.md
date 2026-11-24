@@ -410,9 +410,11 @@ workflow) with a test version. It does everything except publish, and leaves the
 | Path | Contents |
 | -- | -- |
 | `src/GpsdExporter` | The exporter (Native AOT, ASP.NET Core slim host). |
-| `tests/GpsdExporter.Tests.Unit` | Parser, state store, staleness, backoff and configuration. No sockets or HTTP. |
+| `src/GpsdExporter.Core` | The gpsd protocol, state, connection and metric catalogue, independent of hosting. |
+| `tests/GpsdExporter.Tests.Core` | Parser, state store, staleness, backoff, metric catalogue, and the connection manager against FakeGpsd. References only `GpsdExporter.Core`. |
+| `tests/GpsdExporter.Tests.Unit` | Configuration and build info. No sockets or HTTP. |
 | `tests/GpsdExporter.Tests.Metrics` | Exposition tests: the host in-process, `/metrics` scraped and parsed. |
-| `tests/GpsdExporter.Tests.Integration` | The exporter against FakeGpsd, a scripted in-process TCP server. |
+| `tests/GpsdExporter.Tests.Integration` | The exporter process against FakeGpsd, a scripted in-process TCP server. |
 | `tests/GpsdExporter.Tests.Release` | Smoke tests for the published binary and image. Skipped unless `GPSD_EXPORTER_BINARY` is set. |
 | `tests/GpsdExporter.Testing` | Shared test helpers: the fixture loader, FakeGpsd, and the Prometheus text parser and snapshot normalizer. |
 | `grafana-dashboard.json` | The Grafana dashboard: fix, position, satellites, DOP, PPS and TOFF, and exporter health. |

@@ -2,5 +2,20 @@
   <PropertyGroup>
     <RootNamespace>GpsdExporter</RootNamespace>
     <IsAotCompatible>true</IsAotCompatible>
+    <!-- The types are public so the hosts can use them, but this is an application library,
+         not a NuGet API: static factories such as FieldValues<T>.Empty read best where they are. -->
+    <NoWarn>$(NoWarn);CA1000</NoWarn>
   </PropertyGroup>
+
+  <!-- Hosting-independent: Microsoft.Extensions abstractions only, never ASP.NET Core. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="GpsdExporter.Tests.Core" />
+    <InternalsVisibleTo Include="GpsdExporter.Tests.Host" />
+  </ItemGroup>
 </Project>

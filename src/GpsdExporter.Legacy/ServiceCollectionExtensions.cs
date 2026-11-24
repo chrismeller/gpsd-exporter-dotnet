@@ -3,6 +3,7 @@ using GpsdExporter.Connection;
 using GpsdExporter.Metrics;
 using GpsdExporter.State;
 using GpsdExporter.Telemetry;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Metrics;
 
 namespace GpsdExporter;
@@ -22,7 +23,10 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton(settings.Staleness);
         services.AddSingleton(settings.Metrics);
         services.AddSingleton(settings.Http);
-        services.AddSingleton(sp => new StateStore(sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<StalenessOptions>()));
+        // Core takes IOptions<T>; these wrap the registered values, so replacing a value still works.
+        services.AddSingleton(sp => Options.Create(sp.GetRequiredService<GpsdOptions>()));
+        services.AddSingleton(sp => Options.Create(sp.GetRequiredService<StalenessOptions>()));
+        services.AddSingleton<StateStore>();
         services.AddSingleton<ConnectionStats>();
         services.AddHostedService<GpsdConnectionManager>();
 

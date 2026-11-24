@@ -29,6 +29,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../GpsdExporter.Core/GpsdExporter.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="GpsdExporter.Tests.Unit" />
     <InternalsVisibleTo Include="GpsdExporter.Tests.Metrics" />
     <InternalsVisibleTo Include="GpsdExporter.Tests.Integration" />
