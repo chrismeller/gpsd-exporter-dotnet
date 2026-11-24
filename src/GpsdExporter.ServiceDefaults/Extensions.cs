@@ -7,12 +7,13 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace Microsoft.Extensions.Hosting;
 
 // The Aspire service defaults: health checks and OpenTelemetry. Trimmed from the
 // aspire-servicedefaults template: the exporter makes no outbound HTTP calls, so HttpClient
-// resilience, service discovery and HTTP tracing are left out.
+// resilience, service discovery and HttpClient instrumentation are left out.
 // See https://aka.ms/aspire/service-defaults
 public static class Extensions
 {
@@ -29,9 +30,11 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Logs and metrics through OpenTelemetry, exported over OTLP when
-    /// <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set. The application adds its own meters with
-    /// <c>ConfigureOpenTelemetryMeterProvider</c>; this adds .NET runtime and process metrics.
+    /// Logs, metrics and traces through OpenTelemetry, exported over OTLP when
+    /// <c>OTEL_EXPORTER_OTLP_ENDPOINT</c> is set. The application adds its own meters and
+    /// activity sources with <c>ConfigureOpenTelemetryMeterProvider</c> and
+    /// <c>ConfigureOpenTelemetryTracerProvider</c>; this adds ASP.NET Core, .NET runtime and
+    /// process metrics, and ASP.NET Core request spans.
     /// </summary>
     public static TBuilder ConfigureOpenTelemetry<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
@@ -48,8 +51,16 @@ public static class Extensions
                 // still override the name and version set above.
                 .AddEnvironmentVariableDetector())
             .WithMetrics(metrics => metrics
+                .AddAspNetCoreInstrumentation()
                 .AddRuntimeInstrumentation()
-                .AddProcessInstrumentation());
+                .AddProcessInstrumentation())
+            .WithTracing(tracing => tracing
+                .AddSource(builder.Environment.ApplicationName)
+                .AddAspNetCoreInstrumentation(aspNetCore =>
+                    // Exclude health check requests from tracing
+                    aspNetCore.Filter = context =>
+                        !context.Request.Path.StartsWithSegments(ReadinessEndpointPath)
+                        && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath)));
 
         builder.AddOpenTelemetryExporters();
 
