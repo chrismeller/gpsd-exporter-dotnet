@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/GpsdExporter/GpsdExporter.csproj" />
+    <ProjectReference Include="../../src/GpsdExporter.Legacy/GpsdExporter.Legacy.csproj" />
     <ProjectReference Include="../GpsdExporter.Testing/GpsdExporter.Testing.csproj" />
   </ItemGroup>
 </Project>

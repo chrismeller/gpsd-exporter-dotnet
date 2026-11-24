@@ -15,6 +15,11 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Process" Version="[1.21.0-rc.1]" />
   </ItemGroup>
 
+  <ItemGroup Label="AppHost (local development only)">
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Dotnet" Version="17.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Tests">
     <PackageVersion Include="xunit.v3.mtp-v2" Version="4.0.3" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />

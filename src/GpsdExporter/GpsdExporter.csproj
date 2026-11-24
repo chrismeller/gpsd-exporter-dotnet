@@ -4,33 +4,22 @@
     <RootNamespace>GpsdExporter</RootNamespace>
     <AssemblyName>gpsd-exporter</AssemblyName>
 
-    <!-- R11: Native AOT. IsAotCompatible turns on the trim, AOT and single-file
-         analyzers for every build, so problems show up long before publish. -->
+    <!-- Native AOT. IsAotCompatible turns on the trim, AOT and single-file analyzers for
+         every build, so problems show up long before publish. -->
     <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-    <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
     <IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>
     <StripSymbols>true</StripSymbols>
-
-    <!-- AOT-safe configuration binding: Get<T>() calls are source-generated. -->
-    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenTelemetry" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
-    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Process" />
+    <ProjectReference Include="../GpsdExporter.ServiceDefaults/GpsdExporter.ServiceDefaults.csproj" />
+    <ProjectReference Include="../GpsdExporter.Core/GpsdExporter.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="GpsdExporter.Tests.Unit" />
-    <InternalsVisibleTo Include="GpsdExporter.Tests.Metrics" />
-    <InternalsVisibleTo Include="GpsdExporter.Tests.Integration" />
+    <InternalsVisibleTo Include="GpsdExporter.Tests.Host" />
   </ItemGroup>
 </Project>

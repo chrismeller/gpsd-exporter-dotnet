@@ -34,6 +34,14 @@ jobs:
         with:
           global-json-file: global.json
 
+      # The Aspire AppHost (local development only) needs the Aspire CLI on PATH to build.
+      - name: Install the Aspire CLI
+        env:
+          ASPIRE_CLI_VERSION: "17.0.0"
+        run: |
+          dotnet tool install --global Aspire.Cli --version "$ASPIRE_CLI_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
       # NuGet audit runs during restore and, with warnings as errors, fails on any
       # known-vulnerable package, direct or transitive (AC12.5).
       - name: Restore
@@ -42,6 +50,17 @@ jobs:
       # Compiler, analyzer, trim and AOT warnings are errors (Directory.Build.props).
       - name: Build
         run: dotnet build --no-restore --configuration "$CONFIGURATION"
+
+      # The new Aspire-based host must publish as a native binary with no warnings.
+      - name: Publish the host with Native AOT
+        run: |
+          dotnet publish src/GpsdExporter --configuration "$CONFIGURATION" --runtime linux-x64 \
+            --output "$RUNNER_TEMP/aot" 2>&1 | tee "$RUNNER_TEMP/aot-publish.log"
+          if grep -nE ': warning [A-Z]+[0-9]+' "$RUNNER_TEMP/aot-publish.log"; then
+            echo "::error::The AOT publish produced warnings."
+            exit 1
+          fi
+          test -x "$RUNNER_TEMP/aot/gpsd-exporter"
 
       - name: Test
         env:
