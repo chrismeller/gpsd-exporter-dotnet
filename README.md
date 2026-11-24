@@ -356,6 +356,28 @@ Exposition tests use [Verify](https://github.com/VerifyTests/Verify) for snapsho
 next to it (ignored by git). Verify's licence check is satisfied by its OpenSource exemption in
 `Directory.Build.props`, which must be renewed before `Verify_SponsorshipExemptionUntil`.
 
+### Running it locally with Aspire
+
+`src/GpsdExporter.AppHost` starts everything needed to watch the exporter work, with no GPS receiver. It
+is for development only and is never shipped. It needs the [Aspire CLI](https://aspire.dev/get-started/install-cli/)
+and a running Docker (for Prometheus).
+
+```sh
+aspire run
+# or
+dotnet run --project src/GpsdExporter.AppHost
+```
+
+It starts:
+
+- `fake-gpsd` (`tools/GpsdExporter.FakeGpsd`), which replays `tests/fixtures/session-3d-fix.jsonl` over
+  and over, one epoch a second. To replay another fixture, set `FAKE_GPSD_FIXTURE` on it in `AppHost.cs`.
+- `gpsd-exporter`, connected to the fake gpsd and listening on <http://localhost:9978>.
+- `prometheus`, scraping the exporter's `/metrics` every 5 seconds.
+
+Open the dashboard link it prints. The exporter's logs and metrics are there (Aspire sets the `OTEL_*`
+variables), and the `prometheus` resource links to Prometheus, where the `gpsd_` metrics can be queried.
+
 ## Releasing
 
 Releases are managed by [Release Please](https://github.com/googleapis/release-please). Pull requests are
