@@ -51,20 +51,9 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration "$CONFIGURATION"
 
-      # The new Aspire-based host must publish as a native binary with no warnings.
-      - name: Publish the host with Native AOT
-        run: |
-          dotnet publish src/GpsdExporter --configuration "$CONFIGURATION" --runtime linux-x64 \
-            --output "$RUNNER_TEMP/aot" 2>&1 | tee "$RUNNER_TEMP/aot-publish.log"
-          if grep -nE ': warning [A-Z]+[0-9]+' "$RUNNER_TEMP/aot-publish.log"; then
-            echo "::error::The AOT publish produced warnings."
-            exit 1
-          fi
-          test -x "$RUNNER_TEMP/aot/gpsd-exporter"
-
       - name: Test
         env:
-          # The new host's golden exposition test (T7.2) also writes its raw scrape here for promtool.
+          # The golden exposition test also writes its raw scrape here for promtool.
           GPSD_EXPORTER_GOLDEN_SCRAPE: ${{ runner.temp }}/golden-scrape.prom
         run: >-
           dotnet test --no-build --configuration "$CONFIGURATION"

@@ -7,7 +7,7 @@
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now gpsd-exporter
 #
-# Settings go in /etc/default/gpsd-exporter as GPSD_EXPORTER_ variables; see that file.
+# Settings go in /etc/default/gpsd-exporter as GPSD_EXPORTER_ (and OTEL_) variables; see that file.
 
 [Unit]
 Description=Prometheus exporter for gpsd

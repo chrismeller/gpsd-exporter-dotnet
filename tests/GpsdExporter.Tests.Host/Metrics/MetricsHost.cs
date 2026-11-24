@@ -16,7 +16,7 @@ using Microsoft.Extensions.Time.Testing;
 namespace GpsdExporter.Tests.Host.Metrics;
 
 /// <summary>
-/// The new host, in process, with <c>/metrics</c> scraped over the test server and time on a
+/// The exporter, in process, with <c>/metrics</c> scraped over the test server and time on a
 /// <see cref="FakeTimeProvider"/>. Without a gpsd address there is no connection: lines are
 /// parsed and applied to the host's <see cref="StateStore"/> exactly as the connection manager
 /// would. With one (a FakeGpsd), the real connection manager runs against it.
@@ -128,6 +128,23 @@ internal sealed class MetricsHost : IAsyncDisposable
             }
 
             await Task.Delay(5, Ct);
+        }
+    }
+
+    /// <summary>Advances fake time in steps, with a moment of real time after each, until <paramref name="condition"/> holds.</summary>
+    public async Task AdvanceUntil(Func<bool> condition, TimeSpan step, TimeSpan max, string because)
+    {
+        var advanced = TimeSpan.Zero;
+        while (!condition())
+        {
+            if (advanced >= max)
+            {
+                throw new TimeoutException($"{because} did not happen within {max} of fake time.");
+            }
+
+            Time.Advance(step);
+            advanced += step;
+            await Task.Delay(20, Ct);
         }
     }
 

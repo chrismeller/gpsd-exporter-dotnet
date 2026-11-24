@@ -1,7 +1,7 @@
 using GpsdExporter.Testing.Prometheus;
 using VerifyTests;
 
-namespace GpsdExporter.Tests.Metrics.Prometheus;
+namespace GpsdExporter.Tests.Core.Prometheus;
 
 public sealed class PrometheusSnapshotTests
 {

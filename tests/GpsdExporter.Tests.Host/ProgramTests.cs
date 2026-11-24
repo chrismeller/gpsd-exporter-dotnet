@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
+using GpsdExporter.Testing;
+using GpsdExporter.Testing.Prometheus;
 
 namespace GpsdExporter.Tests.Host;
 
@@ -142,6 +144,74 @@ public sealed partial class ProgramTests
         output.Split('\n', StringSplitOptions.RemoveEmptyEntries).ShouldAllBe(line => line.StartsWith('{'));
     }
 
+    [Fact]
+    public async Task Go_flags_against_FakeGpsd_connect_and_serve_metrics()
+    {
+        await using var gpsd = FakeGpsd.CreateStarted();
+        using var process = Start(["-d", gpsd.Address, "-l", "127.0.0.1:0", "-v", "-p", "10s"], null);
+        var output = new OutputCollector(process);
+        try
+        {
+            var connection = await gpsd.AcceptAsync(Ct);
+            await connection.WaitForLineAsync("""?WATCH={"enable":true,"json":true,"pps":true};""", Ct);
+            using var http = new HttpClient { BaseAddress = await output.ListeningUrlAsync() };
+
+            var deadline = DateTime.UtcNow + Limit;
+            PrometheusText scrape;
+            do
+            {
+                scrape = PrometheusText.Parse(await http.GetStringAsync(new Uri("/metrics", UriKind.Relative), Ct));
+            }
+            while (scrape.Value("gpsd_up") != 1 && DateTime.UtcNow < deadline && await Delay());
+
+            scrape.Value("gpsd_up").ShouldBe(1);
+        }
+        finally
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync(CancellationToken.None);
+        }
+    }
+
+    [Fact]
+    public async Task A_client_sending_headers_slowly_is_closed_after_the_header_timeout()
+    {
+        using var process = Start(["-l", "127.0.0.1:0", "-d", "127.0.0.1:1"], null);
+        var output = new OutputCollector(process);
+        try
+        {
+            var url = await output.ListeningUrlAsync();
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, url.Port, Ct);
+            var stream = client.GetStream();
+            var started = Stopwatch.StartNew();
+            await stream.WriteAsync("GET /metrics HTTP/1.1\r\nHost: localhost\r\n"u8.ToArray(), Ct);
+
+            // Never finish the headers. Kestrel may answer 408 before it closes; either way
+            // the stream ends.
+            var buffer = new byte[4096];
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+            timeout.CancelAfter(Limit);
+            while (await stream.ReadAsync(buffer, timeout.Token) > 0)
+            {
+            }
+
+            started.Elapsed.ShouldBeGreaterThan(TimeSpan.FromSeconds(9));
+            started.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(15));
+        }
+        finally
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync(CancellationToken.None);
+        }
+    }
+
+    private static async Task<bool> Delay()
+    {
+        await Task.Delay(50, Ct);
+        return true;
+    }
+
     private static string ExecutablePath => Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "gpsd-exporter.exe" : "gpsd-exporter");
 
     private static Process Start(string[] args, Dictionary<string, string>? environment)
@@ -246,4 +316,63 @@ public sealed partial class ProgramTests
 
     [GeneratedRegex("Now listening on: ")]
     private static partial Regex ListeningOn();
+
+    [GeneratedRegex(@"Now listening on: (?<url>http://[^\s]+)")]
+    private static partial Regex ListeningUrl();
+
+    /// <summary>Collects a running exporter's stdout and stderr as they arrive.</summary>
+    private sealed class OutputCollector
+    {
+        private readonly StringBuilder _text = new();
+        private readonly Lock _lock = new();
+
+        public OutputCollector(Process process)
+        {
+            process.OutputDataReceived += (_, e) => Append(e.Data);
+            process.ErrorDataReceived += (_, e) => Append(e.Data);
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+        }
+
+        private string Text
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _text.ToString();
+                }
+            }
+        }
+
+        /// <summary>Waits until the exporter logs where it listens, and returns that address.</summary>
+        public async Task<Uri> ListeningUrlAsync()
+        {
+            var deadline = DateTime.UtcNow + Limit;
+            while (DateTime.UtcNow < deadline)
+            {
+                if (ListeningUrl().Match(Text) is { Success: true } match)
+                {
+                    return new Uri(match.Groups["url"].Value);
+                }
+
+                await Task.Delay(20, Ct);
+            }
+
+            throw new TimeoutException($"The exporter did not log where it listens. Output:\n{Text}");
+        }
+
+        private void Append(string? line)
+        {
+            if (line is null)
+            {
+                return;
+            }
+
+            lock (_lock)
+            {
+                _text.AppendLine(line);
+            }
+        }
+    }
 }

@@ -5,10 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup Label="Exporter">
-    <PackageVersion Include="OpenTelemetry" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.21.0" />
-    <!-- Pre-release; pinned exactly. The golden exposition test (T7.2) catches any change in output. -->
-    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="[1.21.0-beta.1]" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.21.0" />
     <!-- Release candidate; pinned exactly. -->

@@ -44,7 +44,8 @@ internal static partial class PublishedBinary
             info.ArgumentList.Add(arg);
         }
 
-        foreach (var key in info.Environment.Keys.Where(k => k.StartsWith("GPSD_EXPORTER_", StringComparison.Ordinal) || k.StartsWith("DOTNET_", StringComparison.Ordinal)).ToList())
+        // Nothing from the runner's environment may change the settings, where it listens or OTLP.
+        foreach (var key in info.Environment.Keys.Where(k => k.StartsWith("GPSD_EXPORTER_", StringComparison.Ordinal) || k.StartsWith("DOTNET_", StringComparison.Ordinal) || k.StartsWith("ASPNETCORE_", StringComparison.Ordinal) || k.StartsWith("OTEL_", StringComparison.Ordinal)).ToList())
         {
             info.Environment.Remove(key);
         }

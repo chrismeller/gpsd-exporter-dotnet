@@ -1,6 +1,6 @@
 using GpsdExporter.Testing.Prometheus;
 
-namespace GpsdExporter.Tests.Metrics.Prometheus;
+namespace GpsdExporter.Tests.Core.Prometheus;
 
 public sealed class PrometheusTextTests
 {
