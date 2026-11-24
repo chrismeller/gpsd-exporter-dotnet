@@ -8,21 +8,13 @@ namespace GpsdExporter.Tests.Metrics.Exposition;
 [Collection(SerialHostTests.Name)]
 public sealed class CatalogueExpositionTests
 {
-    /// <summary>When set, the T7.2 test also writes the raw scrape to this path.</summary>
-    public const string GoldenScrapeVariable = "GPSD_EXPORTER_GOLDEN_SCRAPE";
-
     [Fact]
     public async Task T7_2_full_scrape_matches_the_approved_snapshot()
     {
         await using var session = await GoldenSession.StartAsync();
 
+        // The new host's golden test (GpsdExporter.Tests.Host) writes the scrape for promtool.
         var text = await session.Host.ScrapeTextAsync();
-
-        // CI runs `promtool check metrics` on this exact scrape (T7.4).
-        if (Environment.GetEnvironmentVariable(GoldenScrapeVariable) is { Length: > 0 } path)
-        {
-            await File.WriteAllTextAsync(path, text, TestContext.Current.CancellationToken);
-        }
 
         await Verify(PrometheusSnapshot.Normalize(text));
     }
