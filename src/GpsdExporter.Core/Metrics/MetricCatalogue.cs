@@ -14,8 +14,7 @@ public enum MetricKind
 /// One metric as exposed on <c>/metrics</c>: the exact name, type, unit, label names and help
 /// text. <see cref="Unit"/> is the unit the name's suffix stands for, in UCUM-style
 /// notation, or <c>1</c> for a dimensionless value. It is documentation and a test input;
-/// it is not passed to the instrument, because the OpenTelemetry Prometheus exporter
-/// would append its own suffix for units it does not recognise (<c>deg</c>, <c>dBHz</c>).
+/// the exposed name already carries the unit, so nothing is appended to it.
 /// </summary>
 public sealed record MetricDefinition(string Name, MetricKind Kind, string Unit, ImmutableArray<string> Labels, string Help);
 

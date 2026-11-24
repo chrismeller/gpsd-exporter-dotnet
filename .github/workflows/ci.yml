@@ -64,7 +64,7 @@ jobs:
 
       - name: Test
         env:
-          # The golden exposition test (T7.2) also writes its raw scrape here for promtool.
+          # The new host's golden exposition test (T7.2) also writes its raw scrape here for promtool.
           GPSD_EXPORTER_GOLDEN_SCRAPE: ${{ runner.temp }}/golden-scrape.prom
         run: >-
           dotnet test --no-build --configuration "$CONFIGURATION"
