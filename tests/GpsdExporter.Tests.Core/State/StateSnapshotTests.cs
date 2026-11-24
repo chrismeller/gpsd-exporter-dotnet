@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using GpsdExporter.Protocol;
 using GpsdExporter.State;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 namespace GpsdExporter.Tests.Core.State;
@@ -144,7 +145,7 @@ public sealed class StateSnapshotTests
     [Fact]
     public void Stale_after_settings_are_used()
     {
-        var store = new StateStore(_time, new StalenessOptions { Tpv = TimeSpan.FromSeconds(2) });
+        var store = new StateStore(_time, Options.Create(new StalenessOptions { Tpv = TimeSpan.FromSeconds(2) }));
         Apply(store, FullTpv);
 
         _time.Advance(TimeSpan.FromSeconds(2));

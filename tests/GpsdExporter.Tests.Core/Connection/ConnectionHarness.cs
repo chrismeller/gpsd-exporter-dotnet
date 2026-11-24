@@ -19,7 +19,7 @@ internal sealed class ConnectionHarness : IAsyncDisposable
         Options = new GpsdOptions { Address = address };
         Options = configure?.Invoke(Options) ?? Options;
         Store = new StateStore(Time);
-        Manager = new GpsdConnectionManager(Options, Store, Stats, Time, Logger);
+        Manager = new GpsdConnectionManager(Microsoft.Extensions.Options.Options.Create(Options), Store, Stats, Time, Logger);
     }
 
     public FakeTimeProvider Time { get; } = new(new DateTimeOffset(2026, 11, 23, 10, 0, 0, TimeSpan.Zero));

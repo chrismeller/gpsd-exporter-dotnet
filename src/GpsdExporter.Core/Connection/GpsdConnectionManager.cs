@@ -6,6 +6,7 @@ using GpsdExporter.Protocol;
 using GpsdExporter.State;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace GpsdExporter.Connection;
 
@@ -41,32 +42,33 @@ public sealed class GpsdConnectionManager : BackgroundService
     private int _protocolWarned;
 
     public GpsdConnectionManager(
-        GpsdOptions options,
+        IOptions<GpsdOptions> options,
         StateStore store,
         ConnectionStats stats,
         TimeProvider time,
         ILogger<GpsdConnectionManager> logger)
     {
         ArgumentNullException.ThrowIfNull(options);
-        var errors = options.Validate();
+        var gpsd = options.Value;
+        var errors = gpsd.Validate();
         if (errors.Count > 0)
         {
             throw new ArgumentException(string.Join(" ", errors), nameof(options));
         }
 
-        _options = options;
+        _options = gpsd;
         _store = store;
         _stats = stats;
         _time = time;
         _logger = logger;
         _badLines = new BadLineLog(logger, time);
-        _backoff = new ReconnectBackoff(options.ReconnectInitialDelay, options.ReconnectMaxDelay);
-        if (!GpsdOptions.TryParseAddress(options.Address, out _host, out _port))
+        _backoff = new ReconnectBackoff(gpsd.ReconnectInitialDelay, gpsd.ReconnectMaxDelay);
+        if (!GpsdOptions.TryParseAddress(gpsd.Address, out _host, out _port))
         {
-            throw new ArgumentException($"Invalid gpsd address '{options.Address}'.", nameof(options));
+            throw new ArgumentException($"Invalid gpsd address '{gpsd.Address}'.", nameof(options));
         }
 
-        _watch = Encoding.ASCII.GetBytes(options.WatchCommand + "\n");
+        _watch = Encoding.ASCII.GetBytes(gpsd.WatchCommand + "\n");
     }
 
     public override void Dispose()
