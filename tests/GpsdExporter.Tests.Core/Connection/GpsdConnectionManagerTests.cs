@@ -103,7 +103,8 @@ public sealed class GpsdConnectionManagerTests
 
         await connection.SendLineAsync(FakeGpsd.DefaultVersionLine, Ct);
         await ConnectionHarness.WaitUntil(() => harness.Stats.Up, "gpsd_up after VERSION");
-        harness.Store.Current.Version.ShouldNotBeNull();
+        // The stats flip before the report reaches the state store, so wait for the store too.
+        await ConnectionHarness.WaitUntil(() => harness.Store.Current.Version is not null, "VERSION in the state store");
     }
 
     [Fact]
