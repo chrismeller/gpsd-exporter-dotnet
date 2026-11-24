@@ -16,7 +16,7 @@ What it does differently:
   and devices that went away disappear instead of freezing at their last value.
 - Names follow Prometheus conventions: base units (seconds, meters), `_total` counters, `_info` metrics.
 - It reports its own health (connection attempts, parse errors, scrape duration), and can send its own
-  metrics and logs over OTLP.
+  metrics, logs and traces over OTLP.
 
 ## Requirements
 
@@ -118,9 +118,11 @@ variable the section and key are joined by a double underscore (`Gpsd:Address` i
 
 ### OpenTelemetry (OTLP)
 
-The exporter can send its own metrics and logs over OTLP: `gpsd_up`, build information, connection,
-message and parse-error counts, and .NET runtime and process metrics. The gpsd metrics are never sent
-over OTLP; they are only served on `/metrics`. OTLP is configured with the standard OpenTelemetry
+The exporter can send its own metrics, logs and traces over OTLP. Metrics are `gpsd_up`, build
+information, connection, message and parse-error counts, ASP.NET Core HTTP metrics, and .NET runtime and
+process metrics. Traces have a span for each HTTP request except `/healthz` and `/readyz`, and a
+`gpsd connect` span for each attempt to connect to gpsd, with its result. Logs written during a span
+carry its trace ID. The gpsd metrics are never sent over OTLP; they are only served on `/metrics`. OTLP is configured with the standard OpenTelemetry
 environment variables, without the `GPSD_EXPORTER_` prefix:
 
 | Variable | Notes |
@@ -453,7 +455,7 @@ workflow) with a test version. It does everything except publish, and leaves the
 | -- | -- |
 | `src/GpsdExporter` | The exporter (Native AOT, ASP.NET Core slim host): command line and configuration, `/metrics`, health checks and OTLP. |
 | `src/GpsdExporter.Core` | The gpsd protocol, state, connection and metric catalogue, independent of hosting. |
-| `src/GpsdExporter.ServiceDefaults` | The Aspire service defaults: OpenTelemetry logs and metrics, OTLP export, and the `/healthz` and `/readyz` endpoints. |
+| `src/GpsdExporter.ServiceDefaults` | The Aspire service defaults: OpenTelemetry logs, metrics and traces, OTLP export, and the `/healthz` and `/readyz` endpoints. |
 | `src/GpsdExporter.AppHost` | The Aspire AppHost, for running the exporter locally with a fake gpsd and Prometheus. Development only, never shipped. |
 | `tools/GpsdExporter.FakeGpsd` | A stand-in gpsd that replays a test fixture forever, used by the AppHost. Development only. |
 | `tests/GpsdExporter.Tests.Core` | Parser, state store, staleness, backoff, metric catalogue, the connection manager against FakeGpsd, and the README and dashboard checks. References only `GpsdExporter.Core`. |

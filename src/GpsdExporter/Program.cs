@@ -40,6 +40,7 @@ builder.AddGpsdExporter();
 builder.AddGpsdMetrics();
 builder.AddGpsdHealthCheck();
 builder.AddExporterMeter();
+builder.AddExporterTracing();
 
 var app = builder.Build();
 if (await app.ValidateConfigurationAsync().ConfigureAwait(false) is { } invalid)

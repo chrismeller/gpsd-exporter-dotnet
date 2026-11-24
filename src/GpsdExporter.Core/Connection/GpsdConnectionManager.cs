@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Pipelines;
 using System.Net;
 using System.Net.Sockets;
@@ -136,8 +137,31 @@ public sealed class GpsdConnectionManager : BackgroundService
         }
     }
 
-    /// <summary>Connects with the configured timeout. Null means the host is stopping.</summary>
+    /// <summary>
+    /// Connects with the configured timeout, in a <c>gpsd connect</c> span. Null means the host
+    /// is stopping.
+    /// </summary>
     private async Task<ConnectResult?> ConnectAsync(Socket socket, CancellationToken stoppingToken)
+    {
+        using var activity = GpsdTracing.Source.StartActivity("gpsd connect", ActivityKind.Client);
+        activity?.SetTag("server.address", _host);
+        activity?.SetTag("server.port", _port);
+
+        var result = await TryConnectAsync(socket, stoppingToken).ConfigureAwait(false);
+        if (activity is not null && result is { } r)
+        {
+            activity.SetTag("gpsd.connect.result", r.Label());
+            if (r != ConnectResult.Success)
+            {
+                activity.SetTag("error.type", r.Label());
+                activity.SetStatus(ActivityStatusCode.Error);
+            }
+        }
+
+        return result;
+    }
+
+    private async Task<ConnectResult?> TryConnectAsync(Socket socket, CancellationToken stoppingToken)
     {
         using var timeout = new CancellationTokenSource(_options.ConnectTimeout, _time);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, timeout.Token);
