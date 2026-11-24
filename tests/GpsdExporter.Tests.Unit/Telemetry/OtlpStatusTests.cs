@@ -161,6 +161,36 @@ public sealed class OtlpStatusTests
         status.Warnings.ShouldHaveSingleItem().ShouldBe("OTEL_EXPORTER_OTLP_ENDPOINT 'collector:4317' is not an absolute http or https URL and is ignored.");
     }
 
+    [Theory]
+    [InlineData("\"Authorization=Bearer abc\"")]
+    [InlineData("'Authorization=Bearer abc'")]
+    public void A_value_wrapped_in_quotes_warns(string headers)
+    {
+        var status = OtlpStatus.From(Options(new()
+        {
+            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "https://collector",
+            ["OTEL_EXPORTER_OTLP_HEADERS"] = headers,
+            ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf",
+        }));
+
+        status.Enabled.ShouldBeTrue();
+        status.Warnings.ShouldHaveSingleItem().ShouldBe(
+            "OTEL_EXPORTER_OTLP_HEADERS is wrapped in quotes, which are part of its value. "
+            + "Docker's --env-file and the list form of Compose's environment keep quotes; remove them.");
+    }
+
+    [Fact]
+    public void Quotes_inside_a_value_do_not_warn()
+    {
+        var status = OtlpStatus.From(Options(new()
+        {
+            ["OTEL_EXPORTER_OTLP_ENDPOINT"] = "https://collector",
+            ["OTEL_EXPORTER_OTLP_HEADERS"] = "Authorization=Bearer \"abc\"x",
+        }));
+
+        status.Warnings.ShouldBeEmpty();
+    }
+
     private static OtlpOptions Options(Dictionary<string, string> standard, string? endpoint = null) =>
         new() { Endpoint = endpoint, Standard = standard };
 }

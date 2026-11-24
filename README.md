@@ -127,6 +127,9 @@ set. The other standard variables (`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER
 
 - The .NET SDK's default protocol is **gRPC** (port 4317), not `http/protobuf`. To send to a collector's HTTP
   port (4318), also set `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`.
+- Don't wrap values in quotes where they are kept literally: Docker's `--env-file` and the list form of
+  Compose's `environment:` keep them, so `OTEL_EXPORTER_OTLP_HEADERS="Authorization=..."` sends a header named
+  `"Authorization` and every export fails. The exporter warns about quoted `OTEL_` values at startup.
 - Metrics are exported every 60 seconds by default (`OTEL_METRIC_EXPORT_INTERVAL`, in milliseconds).
 - At startup the exporter logs where each signal goes (`OTLP export on: metrics to ... over grpc`), or warns
   when `OTEL_` variables are set but no endpoint is, or when the protocol does not match the usual port. Export

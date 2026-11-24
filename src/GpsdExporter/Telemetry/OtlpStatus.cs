@@ -22,6 +22,16 @@ internal sealed record OtlpStatus(bool Enabled, IReadOnlyList<OtlpSignal> Signal
     {
         ArgumentNullException.ThrowIfNull(otlp);
         var warnings = new List<string>();
+        foreach (var (key, value) in otlp.Standard.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        {
+            if (IsQuoted(value))
+            {
+                warnings.Add(
+                    $"{key} is wrapped in quotes, which are part of its value. "
+                    + "Docker's --env-file and the list form of Compose's environment keep quotes; remove them.");
+            }
+        }
+
         if (!otlp.Enabled)
         {
             if (otlp.Standard.Count > 0)
@@ -105,6 +115,12 @@ internal sealed record OtlpStatus(bool Enabled, IReadOnlyList<OtlpSignal> Signal
         }
 
         return new OtlpSignal(signal, endpoint, protocol);
+    }
+
+    private static bool IsQuoted(string value)
+    {
+        var trimmed = value.Trim();
+        return trimmed.Length >= 2 && (trimmed[0] == '"' || trimmed[0] == '\'') && trimmed[^1] == trimmed[0];
     }
 
     private static bool TryUri(OtlpOptions otlp, string key, List<string> warnings, out Uri uri)
