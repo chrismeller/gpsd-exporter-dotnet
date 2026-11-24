@@ -103,7 +103,8 @@ public sealed class GpsdConnectionManagerTests
 
         await connection.SendLineAsync(FakeGpsd.DefaultVersionLine, Ct);
         await ConnectionHarness.WaitUntil(() => harness.Stats.Up, "gpsd_up after VERSION");
-        harness.Store.Current.Version.ShouldNotBeNull();
+        // The stats flip before the report reaches the state store, so wait for the store too.
+        await ConnectionHarness.WaitUntil(() => harness.Store.Current.Version is not null, "VERSION in the state store");
     }
 
     [Fact]
@@ -193,7 +194,10 @@ public sealed class GpsdConnectionManagerTests
         await connection.SendLineAsync(huge, Ct);
         await connection.SendLineAsync(Tpv, Ct);
 
-        await ConnectionHarness.WaitUntil(() => harness.Stats.Messages(GpsdClass.Tpv) == 1, "the TPV is processed");
+        // The message is counted before it reaches the state store, so wait for both.
+        await ConnectionHarness.WaitUntil(
+            () => harness.Stats.Messages(GpsdClass.Tpv) == 1 && harness.Store.Current.Devices.ContainsKey("/dev/ttyACM0"),
+            "the TPV is processed");
         harness.Stats.ParseErrors(ParseErrorReason.TooLong).ShouldBe(1);
         harness.Store.Current.Devices["/dev/ttyACM0"].Tpv.ShouldNotBeNull();
         harness.Stats.Up.ShouldBeTrue();
