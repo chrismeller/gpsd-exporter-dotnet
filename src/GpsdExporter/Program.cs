@@ -1,6 +1,7 @@
 using GpsdExporter;
 using GpsdExporter.Configuration;
 using GpsdExporter.Metrics;
+using GpsdExporter.Telemetry;
 
 var commandLine = CommandLine.Parse(args);
 if (commandLine.ShowVersion)
@@ -38,6 +39,7 @@ builder.AddServiceDefaults();
 builder.AddGpsdExporter();
 builder.AddGpsdMetrics();
 builder.AddGpsdHealthCheck();
+builder.AddExporterMeter();
 
 var app = builder.Build();
 if (await app.ValidateConfigurationAsync().ConfigureAwait(false) is { } invalid)
