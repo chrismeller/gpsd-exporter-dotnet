@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>GpsdExporter.Tests.Host</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/GpsdExporter/GpsdExporter.csproj" />
+    <ProjectReference Include="../GpsdExporter.Testing/GpsdExporter.Testing.csproj" />
+  </ItemGroup>
+</Project>
