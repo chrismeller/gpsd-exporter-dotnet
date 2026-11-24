@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Local development only: a stand-in gpsd that replays a test fixture forever, so the
+       AppHost can run the exporter without a GPS receiver. Never shipped. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>GpsdExporter.FakeGpsd</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../tests/GpsdExporter.Testing/GpsdExporter.Testing.csproj" />
+  </ItemGroup>
+
+  <!-- Fixtures looks in fixtures/ next to the assembly, as it does in the test projects. -->
+  <ItemGroup>
+    <None Include="../../tests/fixtures/**/*"
+          Link="fixtures/%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          Visible="false" />
+  </ItemGroup>
+</Project>

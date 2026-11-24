@@ -15,4 +15,7 @@
     <Project Path="tests/GpsdExporter.Tests.Release/GpsdExporter.Tests.Release.csproj" />
     <Project Path="tests/GpsdExporter.Tests.Unit/GpsdExporter.Tests.Unit.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/GpsdExporter.FakeGpsd/GpsdExporter.FakeGpsd.csproj" />
+  </Folder>
 </Solution>
