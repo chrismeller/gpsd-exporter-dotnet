@@ -16,5 +16,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="GpsdExporter.Tests.Core" />
+    <InternalsVisibleTo Include="GpsdExporter.Tests.Host" />
   </ItemGroup>
 </Project>

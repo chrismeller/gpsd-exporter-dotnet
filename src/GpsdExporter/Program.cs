@@ -37,6 +37,7 @@ builder.ConfigureExporterHost();
 builder.AddServiceDefaults();
 builder.AddGpsdExporter();
 builder.AddGpsdMetrics();
+builder.AddGpsdHealthCheck();
 
 var app = builder.Build();
 if (await app.ValidateConfigurationAsync().ConfigureAwait(false) is { } invalid)
