@@ -131,6 +131,26 @@ public sealed class ExporterSettingsTests
         settings.Otlp.Enabled.ShouldBeTrue();
     }
 
+    [Fact]
+    public void The_standard_OTEL_variables_are_kept_for_the_startup_log()
+    {
+        var settings = Load(new()
+        {
+            ["OTEL_SERVICE_NAME"] = "gps",
+            ["otel_exporter_otlp_protocol"] = "http/protobuf",
+            ["OTEL_EMPTY"] = "",
+            ["GPSD_EXPORTER_NOT_OTEL"] = "x",
+        });
+
+        settings.Otlp.Enabled.ShouldBeFalse();
+        settings.Otlp.Standard.ShouldBe(new Dictionary<string, string>
+        {
+            ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf",
+            ["OTEL_SERVICE_NAME"] = "gps",
+        });
+        settings.Otlp.ShouldNotBe(ExporterSettings.Default.Otlp);
+    }
+
     [Theory]
     [InlineData("collector:4317")]
     [InlineData("grpc://collector:4317")]

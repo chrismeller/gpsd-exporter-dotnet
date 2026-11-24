@@ -118,6 +118,20 @@ variable the section and key are joined by a double underscore (`Gpsd:Address` i
 | | `--version` | | Prints the version and exits. |
 | | `-h`, `--help` | | Prints the flags and exits. |
 
+### OpenTelemetry (OTLP)
+
+OTLP export of the exporter's own metrics and logs is on when `Otlp:Endpoint` or one of
+`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` and `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` is
+set. The other standard variables (`OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_SERVICE_NAME`,
+`OTEL_RESOURCE_ATTRIBUTES`, `OTEL_METRIC_EXPORT_INTERVAL` and so on) work as the OpenTelemetry .NET SDK defines them.
+
+- The .NET SDK's default protocol is **gRPC** (port 4317), not `http/protobuf`. To send to a collector's HTTP
+  port (4318), also set `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`.
+- Metrics are exported every 60 seconds by default (`OTEL_METRIC_EXPORT_INTERVAL`, in milliseconds).
+- At startup the exporter logs where each signal goes (`OTLP export on: metrics to ... over grpc`), or warns
+  when `OTEL_` variables are set but no endpoint is, or when the protocol does not match the usual port. Export
+  failures, such as a collector that cannot be reached, are logged as errors, at most once a minute for each.
+
 ## Grafana dashboard
 
 [`grafana-dashboard.json`](grafana-dashboard.json) shows the fix, position, satellites by constellation

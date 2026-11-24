@@ -15,6 +15,10 @@
     <IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>
     <StripSymbols>true</StripSymbols>
 
+    <!-- Native AOT turns EventSource off by default. The OpenTelemetry SDK reports failed
+         exports only on its event source, which OtlpDiagnostics forwards to the log. -->
+    <EventSourceSupport>true</EventSourceSupport>
+
     <!-- AOT-safe configuration binding: Get<T>() calls are source-generated. -->
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
   </PropertyGroup>

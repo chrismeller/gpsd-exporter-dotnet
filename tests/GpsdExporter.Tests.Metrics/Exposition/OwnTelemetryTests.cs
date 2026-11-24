@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 
@@ -62,6 +63,23 @@ public sealed class OwnTelemetryTests
 
         host.Services.GetServices<ILoggerProvider>().ShouldContain(p => p is OpenTelemetryLoggerProvider);
         host.Services.GetServices<IHostedService>().ShouldContain(s => s is OwnMetricsExport);
+        host.Services.GetServices<IHostedService>().ShouldContain(s => s is OtlpDiagnostics);
+    }
+
+    [Fact]
+    public async Task OTLP_diagnostics_are_never_sent_over_OTLP()
+    {
+        await using var host = new MetricsHost(settings: OtlpOn, configureServices: services =>
+        {
+            services.RemoveAll<OwnMetricsExporter>();
+            services.AddSingleton(new OwnMetricsExporter(_ => { }));
+        });
+
+        var filters = host.Services.GetRequiredService<IOptions<LoggerFilterOptions>>().Value;
+        filters.Rules.ShouldContain(r =>
+            r.ProviderName == typeof(OpenTelemetryLoggerProvider).FullName
+            && r.CategoryName == OtlpDiagnostics.Category
+            && r.LogLevel == LogLevel.None);
     }
 
     [Fact]
@@ -72,6 +90,9 @@ public sealed class OwnTelemetryTests
         host.Services.GetServices<ILoggerProvider>().ShouldNotContain(p => p is OpenTelemetryLoggerProvider);
         host.Services.GetServices<IHostedService>().ShouldNotContain(s => s is OwnMetricsExport);
         host.Services.GetService<OwnMetricsExporter>().ShouldBeNull();
+
+        // Still there, to say at startup why OTLP is off when OTEL_ variables are set.
+        host.Services.GetServices<IHostedService>().ShouldContain(s => s is OtlpDiagnostics);
     }
 
     [Fact]

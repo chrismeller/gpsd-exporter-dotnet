@@ -22,10 +22,17 @@ internal static class OwnTelemetry
     public static IServiceCollection AddOwnTelemetry(this IServiceCollection services, OtlpOptions otlp)
     {
         ArgumentNullException.ThrowIfNull(otlp);
+
+        // Registered first, so its listener is there before any export runs.
+        services.AddSingleton(OtlpStatus.From(otlp));
+        services.AddHostedService<OtlpDiagnostics>();
         if (!otlp.Enabled)
         {
             return services;
         }
+
+        // The diagnostics go to the console, never back over OTLP.
+        services.AddLogging(logging => logging.AddFilter<OpenTelemetryLoggerProvider>(OtlpDiagnostics.Category, LogLevel.None));
 
         services.AddSingleton(new OwnMetricsExporter(metrics => metrics.AddOtlpExporter(o => Configure(o, otlp, "v1/metrics"))));
         services.AddHostedService<OwnMetricsExport>();
@@ -72,11 +79,12 @@ internal static class OwnTelemetry
             return;
         }
 
-        var endpoint = new Uri(otlp.Endpoint, UriKind.Absolute);
-        exporter.Endpoint = exporter.Protocol == OtlpExportProtocol.HttpProtobuf
-            ? new Uri(endpoint.AbsoluteUri.TrimEnd('/') + "/" + signalPath)
-            : endpoint;
+        exporter.Endpoint = SignalEndpoint(new Uri(otlp.Endpoint, UriKind.Absolute), exporter.Protocol == OtlpExportProtocol.HttpProtobuf, signalPath);
     }
+
+    /// <summary>A base endpoint for one signal: with <c>http/protobuf</c>, the signal's path is added.</summary>
+    internal static Uri SignalEndpoint(Uri endpoint, bool httpProtobuf, string signalPath) =>
+        httpProtobuf ? new Uri(endpoint.AbsoluteUri.TrimEnd('/') + "/" + signalPath) : endpoint;
 }
 
 /// <summary>How own metrics leave the process: OTLP in production, in memory in tests.</summary>

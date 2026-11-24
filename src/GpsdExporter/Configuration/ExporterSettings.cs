@@ -38,7 +38,7 @@ internal sealed record ExporterSettings(
         var http = Bind(configuration, HttpOptions.Section, static s => s.Get<HttpOptions>(Strict), errors) ?? new HttpOptions();
         var otlp = (Bind(configuration, OtlpOptions.Section, static s => s.Get<OtlpOptions>(Strict), errors) ?? new OtlpOptions()) with
         {
-            StandardEndpoint = OtlpOptions.StandardEndpointKeys.Any(k => !string.IsNullOrEmpty(configuration[k])),
+            Standard = OtlpOptions.ReadStandard(configuration),
         };
 
         errors.AddRange(gpsd.Validate());
