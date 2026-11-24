@@ -1,5 +1,6 @@
 using GpsdExporter;
 using GpsdExporter.Configuration;
+using GpsdExporter.Metrics;
 
 var commandLine = CommandLine.Parse(args);
 if (commandLine.ShowVersion)
@@ -35,10 +36,16 @@ catch (FormatException e)
 builder.ConfigureExporterHost();
 builder.AddServiceDefaults();
 builder.AddGpsdExporter();
+builder.AddGpsdMetrics();
 
 var app = builder.Build();
+if (await app.ValidateConfigurationAsync().ConfigureAwait(false) is { } invalid)
+{
+    return invalid;
+}
 
 app.MapDefaultEndpoints();
+app.MapGpsdMetrics();
 
 return await app.RunExporterAsync(commandLine.PollIgnored).ConfigureAwait(false);
 

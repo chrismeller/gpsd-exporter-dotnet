@@ -14,8 +14,12 @@ internal static partial class Startup
     public const int BindFailed = 1;
     public const int InvalidConfiguration = 2;
 
-    /// <summary>Validates the options, starts the host and runs it until shutdown.</summary>
-    public static async Task<int> RunExporterAsync(this WebApplication app, bool pollIgnored)
+    /// <summary>
+    /// Validates the options, before anything reads them: endpoint mapping reads
+    /// <c>Http:MetricsPath</c>. Returns <see cref="InvalidConfiguration"/> after reporting the
+    /// problems, or null when the configuration is valid.
+    /// </summary>
+    public static async Task<int?> ValidateConfigurationAsync(this WebApplication app)
     {
         ArgumentNullException.ThrowIfNull(app);
 
@@ -24,12 +28,19 @@ internal static partial class Startup
         try
         {
             app.Services.GetService<IStartupValidator>()?.Validate();
+            return null;
         }
         catch (Exception e) when (ConfigurationProblems(e) is { } problems)
         {
             await app.DisposeAsync().ConfigureAwait(false);
             return Fail(problems, showUsage: false);
         }
+    }
+
+    /// <summary>Starts the host and runs it until shutdown.</summary>
+    public static async Task<int> RunExporterAsync(this WebApplication app, bool pollIgnored)
+    {
+        ArgumentNullException.ThrowIfNull(app);
 
         if (pollIgnored)
         {
