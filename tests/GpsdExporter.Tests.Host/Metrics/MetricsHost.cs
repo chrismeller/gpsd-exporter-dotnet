@@ -37,10 +37,13 @@ internal sealed class MetricsHost : IAsyncDisposable
         _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(web =>
         {
             web.ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Warning));
-            if (settings is not null)
+            var all = new Dictionary<string, string?>(settings ?? new Dictionary<string, string?>());
+            if (gpsdAddress is not null)
             {
-                web.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(settings));
+                all["Gpsd:Address"] = gpsdAddress;
             }
+
+            web.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(all));
 
             web.ConfigureTestServices(services =>
             {
@@ -51,11 +54,6 @@ internal sealed class MetricsHost : IAsyncDisposable
                 {
                     // No gpsd connection: tests feed the state store directly.
                     services.Remove(services.Single(d => d.ImplementationType == typeof(GpsdConnectionManager)));
-                }
-                else
-                {
-                    services.RemoveAll<GpsdOptions>();
-                    services.AddSingleton(new GpsdOptions { Address = gpsdAddress });
                 }
             });
         });

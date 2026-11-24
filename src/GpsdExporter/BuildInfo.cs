@@ -4,9 +4,9 @@ using System.Runtime.InteropServices;
 namespace GpsdExporter;
 
 /// <summary>
-/// The exporter's version, source revision and runtime, for <c>gpsd_exporter_build_info</c>.
-/// The SDK writes the version and the git commit into the informational version as
-/// <c>version+commit</c>.
+/// The exporter's version, source revision and runtime, for <c>gpsd_exporter_build_info</c>
+/// and <c>--version</c>. The SDK writes the version and the git commit into the
+/// informational version as <c>version+commit</c>.
 /// </summary>
 internal static class BuildInfo
 {
@@ -27,6 +27,9 @@ internal static class BuildInfo
 
     /// <summary>The .NET runtime, e.g. <c>.NET 10.0.0</c>.</summary>
     public static string Runtime { get; } = RuntimeInformation.FrameworkDescription;
+
+    /// <summary>What <c>--version</c> prints.</summary>
+    public static string VersionLine => $"gpsd-exporter {Version} (revision {Revision}, {Runtime})";
 
     /// <summary>Splits <c>version+metadata</c>; the metadata, if any, is the revision.</summary>
     internal static (string Version, string Revision) Split(string informationalVersion)
