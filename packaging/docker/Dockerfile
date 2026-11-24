@@ -5,7 +5,7 @@
 # The build context has the binaries at <TARGETPLATFORM>/gpsd-exporter, for example
 # linux/amd64/gpsd-exporter and linux/arm64/gpsd-exporter. There are no RUN steps, so buildx
 # assembles both architectures without emulation.
-FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled@sha256:40eba5db69594d517c3a61e96bdacc2e3d6f8c99a44b52d55edee844d33518d0
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled@sha256:2bb1d484500b032aaafb75e876ffbea135b969d6259cacfcbf18a793e5d6e6ec
 
 ARG TARGETPLATFORM
 ARG VERSION=0.0.0-dev
