@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using GpsdExporter.Protocol;
 
 namespace GpsdExporter.State;
@@ -6,7 +7,11 @@ namespace GpsdExporter.State;
 /// How long each class's values are served after they were received. Bound from the
 /// <c>Staleness</c> configuration section (<c>Staleness:Tpv</c> and so on).
 /// </summary>
-public sealed record StalenessOptions
+/// <remarks>
+/// The rules live in <see cref="Validate()"/>; <see cref="StalenessOptionsValidator"/> runs
+/// them for the options pattern through <see cref="IValidatableObject"/>.
+/// </remarks>
+public sealed record StalenessOptions : IValidatableObject
 {
     public const string Section = "Staleness";
 
@@ -24,6 +29,9 @@ public sealed record StalenessOptions
         [.. new[] { (Tpv, nameof(Tpv)), (Sky, nameof(Sky)), (Pps, nameof(Pps)), (Toff, nameof(Toff)), (Osc, nameof(Osc)) }
             .Where(s => s.Item1 <= TimeSpan.Zero)
             .Select(s => $"{Section}:{s.Item2} must be positive.")];
+
+    IEnumerable<ValidationResult> IValidatableObject.Validate(ValidationContext validationContext) =>
+        Validate().Select(static error => new ValidationResult(error));
 
     /// <summary>The stale-after setting for a class, or null for classes that do not go stale.</summary>
     public TimeSpan? For(GpsdClass cls) => cls switch

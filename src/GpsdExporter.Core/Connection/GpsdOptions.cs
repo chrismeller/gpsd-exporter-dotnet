@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -8,7 +9,11 @@ namespace GpsdExporter.Connection;
 /// How to reach gpsd and keep the connection healthy (the <c>Gpsd</c> configuration
 /// section). The defaults suit a local gpsd.
 /// </summary>
-public sealed record GpsdOptions
+/// <remarks>
+/// The rules live in <see cref="Validate()"/>; <see cref="GpsdOptionsValidator"/> runs them
+/// for the options pattern through <see cref="IValidatableObject"/>.
+/// </remarks>
+public sealed record GpsdOptions : IValidatableObject
 {
     public const string Section = "Gpsd";
 
@@ -99,6 +104,9 @@ public sealed record GpsdOptions
             }
         }
     }
+
+    IEnumerable<ValidationResult> IValidatableObject.Validate(ValidationContext validationContext) =>
+        Validate().Select(static error => new ValidationResult(error));
 
     /// <summary>Splits <c>host:port</c>, <c>[v6]:port</c>, <c>host</c> or <c>[v6]</c>.</summary>
     public static bool TryParseAddress(string? address, out string host, out int port)

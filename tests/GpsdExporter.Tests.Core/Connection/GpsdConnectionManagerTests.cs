@@ -436,7 +436,7 @@ public sealed class GpsdConnectionManagerTests
         var options = new GpsdOptions { Device = "/dev/" + new string('x', 100) };
 
         Should.Throw<ArgumentException>(() => new GpsdConnectionManager(
-            options, new GpsdExporter.State.StateStore(TimeProvider.System), new ConnectionStats(), TimeProvider.System, new FakeLogger<GpsdConnectionManager>()))
+            Microsoft.Extensions.Options.Options.Create(options), new GpsdExporter.State.StateStore(TimeProvider.System), new ConnectionStats(), TimeProvider.System, new FakeLogger<GpsdConnectionManager>()))
             .Message.ShouldContain("80");
     }
 

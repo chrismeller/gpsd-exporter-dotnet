@@ -12,6 +12,9 @@
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
     <IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>
     <StripSymbols>true</StripSymbols>
+
+    <!-- AOT-safe configuration binding: BindConfiguration is source-generated. -->
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
   </PropertyGroup>
 
   <ItemGroup>

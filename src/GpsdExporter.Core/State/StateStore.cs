@@ -1,4 +1,5 @@
 using GpsdExporter.Protocol;
+using Microsoft.Extensions.Options;
 
 namespace GpsdExporter.State;
 
@@ -12,15 +13,16 @@ namespace GpsdExporter.State;
 /// reference write, so a reader sees either the whole of one state or the whole of the next.
 /// A scrape takes one <see cref="Snapshot"/> at the start of collection.
 /// </remarks>
-public sealed class StateStore(TimeProvider timeProvider, StalenessOptions staleness)
+public sealed class StateStore(TimeProvider timeProvider, IOptions<StalenessOptions> stalenessOptions)
 {
     /// <summary>The most devices tracked at once; reports from more are skipped.</summary>
     public const int MaxDevices = 16;
 
+    private readonly StalenessOptions _staleness = stalenessOptions.Value;
     private GpsdState _current = GpsdState.Empty;
 
     public StateStore(TimeProvider timeProvider)
-        : this(timeProvider, new StalenessOptions())
+        : this(timeProvider, Options.Create(new StalenessOptions()))
     {
     }
 
@@ -32,7 +34,7 @@ public sealed class StateStore(TimeProvider timeProvider, StalenessOptions stale
     }
 
     /// <summary>The latest state and the current time, for one scrape. Safe to call from any thread.</summary>
-    public StateSnapshot Snapshot() => new(Current, timeProvider.GetUtcNow(), staleness);
+    public StateSnapshot Snapshot() => new(Current, timeProvider.GetUtcNow(), _staleness);
 
     /// <summary>Forgets everything, as on disconnect.</summary>
     public void Reset() => Current = GpsdState.Empty;
