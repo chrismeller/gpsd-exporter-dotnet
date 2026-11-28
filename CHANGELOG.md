@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/chrismeller/gpsd-exporter-dotnet/compare/v2.0.0...v2.1.0) (2026-11-28)
+
+
+### Features
+
+* send traces over OTLP and restore ASP.NET Core metrics ([#57](https://github.com/chrismeller/gpsd-exporter-dotnet/issues/57)) ([821f0df](https://github.com/chrismeller/gpsd-exporter-dotnet/commit/821f0df60f1d04db76fa098a54bd0f9723dd4caf))
+
 ## [2.0.0](https://github.com/chrismeller/gpsd-exporter-dotnet/compare/v1.0.0...v2.0.0) (2026-11-24)
 
 
